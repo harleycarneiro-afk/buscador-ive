@@ -636,7 +636,7 @@ const BUELA_ALL_DEFS = [
 //  ESTADO GLOBAL
 // ══════════════════════════════════════════════════════════
 
-const CACHE_VER = 'ive-v4';
+const CACHE_VER = 'ive-v5';
 const docs  = [];   // IVE
 const docsB = [];   // Buela
 let currentTab   = 'ive';
@@ -895,8 +895,25 @@ async function loadAllDocsB() {
 async function fetchTXT(url) {
   const resp = await fetch(url);
   if (!resp.ok) throw new Error('No se pudo cargar');
-  const text = await resp.text();
-  return JSON.stringify([{ page: 1, text }]);
+  const raw = await resp.text();
+
+  // Si el archivo tiene párrafos marcados con §N., estructurarlos
+  if (raw.includes('§')) {
+    const parrafos = [];
+    const bloques = raw.split(/\n\n+/);
+    for (const bloque of bloques) {
+      const m = bloque.match(/^§(\d+)\.\s*(.*)/s);
+      if (m) {
+        parrafos.push({ page: parseInt(m[1]), text: m[2].trim() });
+      } else if (bloque.trim()) {
+        parrafos.push({ page: 0, text: bloque.trim() });
+      }
+    }
+    return JSON.stringify(parrafos);
+  }
+
+  // Archivo plano sin estructura
+  return JSON.stringify([{ page: 1, text: raw }]);
 }
 async function fetchPDF(url) {
   const resp = await fetch(url);
@@ -1289,41 +1306,15 @@ function exportResults() {
 let modalDoc=null, modalFragments=[], modalIdx=0;
 
 // Extrae fragmentos de texto alrededor de cada coincidencia
-function buildModalFragments(text, query) {
-  const normText = normalize(text);
+function buildModalFragments(docText, query, pages) {
   const q = parseQuery(query);
   let terms = [];
   if      (q.mode==='exact') terms=[q.phrase];
   else if (q.mode==='or')    terms=q.groups.flatMap(g=>g.split(/\s+/).filter(Boolean));
   else                        terms=q.terms;
 
-  // Encontrar todas las posiciones de coincidencias
-  const allPositions = [];
-  for (const term of terms) {
-    const nt = normalize(term);
-    const isWild = nt.endsWith('*');
-    const base   = isWild ? nt.slice(0,-1) : nt;
-    const re     = new RegExp((isWild?'':'\\b')+escRx(base)+(isWild?'[a-záéíóúüñ]*':'\\b'),'gi');
-    let m;
-    while((m=re.exec(normText))!==null) allPositions.push({ pos: m.index, len: m[0].length });
-  }
-  allPositions.sort((a,b)=>a.pos-b.pos);
-  if (!allPositions.length) return [];
-
-  // Cada coincidencia es un fragmento independiente — salto directo al navegar
-  const CONTEXT = 280;
-  const fragments = [];
-
-  for (const hit of allPositions) {
-    const start = Math.max(0, hit.pos - CONTEXT);
-    const end   = Math.min(text.length, hit.pos + hit.len + CONTEXT);
-    let snip = text.slice(start, end).replace(/\s+/g,' ').trim();
-    if (start > 0) snip = '…' + snip;
-    if (end < text.length) snip += '…';
-
-    // Resaltar: coincidencia principal en rojo, otras en amarillo
-    let html = escHtml(snip);
-    let firstMark = true;
+  function highlightAll(html) {
+    let first = true;
     for (const term of terms) {
       const nt = normalize(term);
       const isWild = nt.endsWith('*');
@@ -1331,13 +1322,65 @@ function buildModalFragments(text, query) {
       const re2 = new RegExp('('+escRx(base)+(isWild?'[a-záéíóúüñA-ZÁÉÍÓÚÜÑ]*':'')+')','gi');
       html = html.replace(re2, m => {
         if (normalize(m).startsWith(base)) {
-          if (firstMark) { firstMark=false; return '<mark class="current">'+m+'</mark>'; }
+          if (first) { first=false; return '<mark class="current">'+m+'</mark>'; }
           return '<mark>'+m+'</mark>';
         }
         return m;
       });
     }
-    fragments.push(html);
+    return html;
+  }
+
+  const fragments = [];
+
+  // Si hay párrafos estructurados (§N.), buscar en cada párrafo
+  if (pages && pages.length > 1 && pages.some(p => p.page > 0)) {
+    const seen = new Set();
+    for (const p of pages) {
+      const normP = normalize(p.text);
+      let hasMatch = false;
+      for (const term of terms) {
+        const nt = normalize(term);
+        const isWild = nt.endsWith('*');
+        const base   = isWild ? nt.slice(0,-1) : nt;
+        const re = new RegExp((isWild?'':'\\b')+escRx(base)+(isWild?'[a-záéíóúüñ]*':'\\b'),'i');
+        if (re.test(normP)) { hasMatch = true; break; }
+      }
+      if (hasMatch) {
+        const key = p.page + ':' + p.text.slice(0,40);
+        if (!seen.has(key)) {
+          seen.add(key);
+          let html = highlightAll(escHtml(p.text));
+          fragments.push({ num: p.page, html });
+        }
+      }
+    }
+    if (fragments.length) return fragments;
+  }
+
+  // Fallback: fragmentos por posición en texto plano
+  const normText = normalize(docText);
+  const allPositions = [];
+  for (const term of terms) {
+    const nt = normalize(term);
+    const isWild = nt.endsWith('*');
+    const base   = isWild ? nt.slice(0,-1) : nt;
+    const re = new RegExp((isWild?'':'\\b')+escRx(base)+(isWild?'[a-záéíóúüñ]*':'\\b'),'gi');
+    let m;
+    while((m=re.exec(normText))!==null) allPositions.push({ pos: m.index, len: m[0].length });
+  }
+  allPositions.sort((a,b)=>a.pos-b.pos);
+  if (!allPositions.length) return [];
+
+  const CONTEXT = 280;
+  for (const hit of allPositions) {
+    const start = Math.max(0, hit.pos - CONTEXT);
+    const end   = Math.min(docText.length, hit.pos + hit.len + CONTEXT);
+    let snip = docText.slice(start, end).replace(/\s+/g,' ').trim();
+    if (start > 0) snip = '…' + snip;
+    if (end < docText.length) snip += '…';
+    let html = highlightAll(escHtml(snip));
+    fragments.push({ num: 0, html });
   }
   return fragments;
 }
@@ -1368,7 +1411,7 @@ function renderModalBody(text, query) {
     return;
   }
 
-  modalFragments = buildModalFragments(text, query);
+  modalFragments = buildModalFragments(text, query, modalDoc ? parsedPages(modalDoc) : null);
 
   if (!modalFragments.length) {
     body.style.overflowY = 'auto';
@@ -1388,9 +1431,13 @@ function renderModalBody(text, query) {
 
 function showFragment(idx) {
   const body = document.getElementById('modal-body');
+  const frag = modalFragments[idx];
+  const numLabel = frag.num > 0
+    ? `<div style="font-family:'Playfair Display',serif;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:10px;">Párrafo ${frag.num}</div>`
+    : '';
   body.innerHTML = `
     <div style="padding:28px 32px; font-size:15px; line-height:2; color:var(--ink-mid);">
-      ${modalFragments[idx]}
+      ${numLabel}${frag.html}
     </div>`;
 }
 
