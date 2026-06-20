@@ -636,7 +636,7 @@ const BUELA_ALL_DEFS = [
 //  ESTADO GLOBAL
 // ══════════════════════════════════════════════════════════
 
-const CACHE_VER = 'ive-v3';
+const CACHE_VER = 'ive-v4';
 const docs  = [];   // IVE
 const docsB = [];   // Buela
 let currentTab   = 'ive';
@@ -818,8 +818,16 @@ async function loadAllDocs() {
     let text = null;
     if (db) { try { text = await cacheGet(db, key); } catch(e) {} }
     if (!text) {
-      try { text = await fetchPDF('pdfs/'+name); if(db&&text) cachePut(db,key,text).catch(()=>{}); }
-      catch(e) { text = null; }
+      try {
+        // Cargar desde TXT pre-convertido (sin notas al pie)
+        const txtName = name.replace(/\.pdf$/i, '.txt');
+        text = await fetchTXT('pdfs_txt/' + txtName);
+        if(db&&text) cachePut(db,key,text).catch(()=>{});
+      } catch(e) {
+        // Fallback al PDF original si no existe el TXT
+        try { text = await fetchPDF('pdfs/'+name); if(db&&text) cachePut(db,key,text).catch(()=>{}); }
+        catch(e2) { text = null; }
+      }
     }
     docs[i] = { name: name.replace(/\.pdf$/i,'').replace(/-/g,' '), text: text||'', selected: !!text, collection:'ive' };
     const item = document.getElementById('item-ive-'+i);
