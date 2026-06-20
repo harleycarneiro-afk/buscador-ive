@@ -1302,31 +1302,18 @@ function buildModalFragments(text, query) {
   allPositions.sort((a,b)=>a.pos-b.pos);
   if (!allPositions.length) return [];
 
-  // Agrupar posiciones cercanas (dentro de 600 chars) en un mismo fragmento
-  const CONTEXT = 300;
-  const groups = [];
-  let currentGroup = [allPositions[0]];
-  for (let i = 1; i < allPositions.length; i++) {
-    if (allPositions[i].pos - currentGroup[currentGroup.length-1].pos < CONTEXT * 2) {
-      currentGroup.push(allPositions[i]);
-    } else {
-      groups.push(currentGroup);
-      currentGroup = [allPositions[i]];
-    }
-  }
-  groups.push(currentGroup);
-
+  // Cada coincidencia es un fragmento independiente — salto directo al navegar
+  const CONTEXT = 280;
   const fragments = [];
-  for (const group of groups) {
-    const firstPos = group[0].pos;
-    const lastPos  = group[group.length-1].pos + group[group.length-1].len;
-    const start = Math.max(0, firstPos - CONTEXT);
-    const end   = Math.min(text.length, lastPos + CONTEXT);
+
+  for (const hit of allPositions) {
+    const start = Math.max(0, hit.pos - CONTEXT);
+    const end   = Math.min(text.length, hit.pos + hit.len + CONTEXT);
     let snip = text.slice(start, end).replace(/\s+/g,' ').trim();
     if (start > 0) snip = '…' + snip;
     if (end < text.length) snip += '…';
 
-    // Resaltar todos los términos — la primera coincidencia en rojo, las demás en amarillo
+    // Resaltar: coincidencia principal en rojo, otras en amarillo
     let html = escHtml(snip);
     let firstMark = true;
     for (const term of terms) {
