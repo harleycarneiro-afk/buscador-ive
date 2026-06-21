@@ -642,7 +642,7 @@ const BUELA_ALL_DEFS = [
 //  ESTADO GLOBAL
 // ══════════════════════════════════════════════════════════
 
-const CACHE_VER = 'ive-v10';
+const CACHE_VER = 'ive-v11';
 const docs  = [];   // IVE
 const docsB = [];   // Buela
 let currentTab   = 'ive';
@@ -1250,8 +1250,9 @@ function searchTerms(text, pages, terms, maxDist) {
       let html = escHtml(snip);
       html = highlightFuzzy(html, normalize(terms[0]), normalize(terms[0]).endsWith('*'));
       let meta = '';
-      if (loc.titulo) meta = `<div class="snippet-meta" style="color:var(--burgundy);font-style:italic;">${escHtml(loc.titulo)}</div>`;
-      else if (pages.length>1 && loc.page>0) meta = `<div class="snippet-meta">pág. ${loc.page}</div>`;
+      if (loc.titulo && loc.page > 0) meta = `<div class="snippet-meta"><span style="color:var(--gold);font-weight:600;margin-right:8px;">§ ${loc.page}</span><span style="color:var(--burgundy);font-style:italic;">${escHtml(loc.titulo)}</span></div>`;
+      else if (loc.titulo) meta = `<div class="snippet-meta" style="color:var(--burgundy);font-style:italic;">${escHtml(loc.titulo)}</div>`;
+      else if (pages.length>1 && loc.page>0) meta = `<div class="snippet-meta" style="color:var(--gold);font-weight:600;">§ ${loc.page}</div>`;
       snippets.push(`<div class="snippet">${meta}${html}</div>`);
     }
     return snippets;
@@ -1277,8 +1278,9 @@ function searchTerms(text, pages, terms, maxDist) {
         let html=escHtml(snip);
         for(const term of terms){const nt=normalize(term);html=highlightFuzzy(html,nt,nt.endsWith('*'));}
         let meta='';
-        if(loc.titulo) meta=`<div class="snippet-meta" style="color:var(--burgundy);font-style:italic;">${escHtml(loc.titulo)}</div>`;
-        else if(pages.length>1 && loc.page>0) meta=`<div class="snippet-meta">pág. ${loc.page}</div>`;
+        if(loc.titulo && loc.page>0) meta=`<div class="snippet-meta"><span style="color:var(--gold);font-weight:600;margin-right:8px;">§ ${loc.page}</span><span style="color:var(--burgundy);font-style:italic;">${escHtml(loc.titulo)}</span></div>`;
+        else if(loc.titulo) meta=`<div class="snippet-meta" style="color:var(--burgundy);font-style:italic;">${escHtml(loc.titulo)}</div>`;
+        else if(pages.length>1 && loc.page>0) meta=`<div class="snippet-meta" style="color:var(--gold);font-weight:600;">§ ${loc.page}</div>`;
         snippets.push(`<div class="snippet">${meta}${html}</div>`);
       }
     }
