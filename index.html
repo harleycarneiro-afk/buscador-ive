@@ -348,6 +348,12 @@ header {
   color: var(--ink-light); margin-bottom: 4px;
 }
 
+.snippet {
+  cursor: pointer;
+}
+.snippet:hover {
+  background: var(--gold-pale);
+}
 .snippet-show-more {
   padding: 9px 18px; font-size: 12.5px; color: var(--navy);
   font-style: italic; background: var(--gold-pale);
@@ -636,7 +642,7 @@ const BUELA_ALL_DEFS = [
 //  ESTADO GLOBAL
 // ══════════════════════════════════════════════════════════
 
-const CACHE_VER = 'ive-v6';
+const CACHE_VER = 'ive-v7';
 const docs  = [];   // IVE
 const docsB = [];   // Buela
 let currentTab   = 'ive';
@@ -1118,6 +1124,10 @@ function buildDocCard(r, col, activeDocs) {
   const colClass = col==='ive' ? 'ive-doc' : 'buela-doc';
   const colLabel = col==='ive' ? 'IVE' : 'P. Buela';
 
+  // Wrapping snippets with onclick to open modal at that fragment
+  const shownWithClick = shown.map((s, si) =>
+    s.replace('<div class="snippet">', `<div class="snippet" onclick="openFullTextAtFragment(${docIdx},'${col}',${si})" title="Clic para ver el párrafo completo">`)
+  );
   let html = `<div class="result-doc ${colClass}" id="${id}">
     <div class="result-doc-header" onclick="toggleDoc('${id}')">
       <span class="result-doc-name">${escHtml(r.name)}</span>
@@ -1129,7 +1139,7 @@ function buildDocCard(r, col, activeDocs) {
       <span class="result-doc-toggle">▾</span>
     </div>
     <div class="result-snippets">
-      ${shown.join('')}
+      ${shownWithClick.join('')}
       ${remaining>0
         ? `<div class="snippet-show-more" id="more-${id}" onclick="showMoreSnippets('${id}','${r.name}',${SNIP_PAGE})">
              Mostrar más resultados (${remaining} restantes)
@@ -1336,16 +1346,17 @@ function buildModalFragments(docText, query, pages) {
   else                        terms=q.terms;
 
   function highlightAll(html) {
-    let first = true;
+    // Resaltar TODAS las ocurrencias — primera en rojo, resto en amarillo subrayado
     for (const term of terms) {
       const nt = normalize(term);
       const isWild = nt.endsWith('*');
       const base   = isWild ? nt.slice(0,-1) : nt;
       const re2 = new RegExp('('+escRx(base)+(isWild?'[a-záéíóúüñA-ZÁÉÍÓÚÜÑ]*':'')+')','gi');
+      let first = true;
       html = html.replace(re2, m => {
         if (normalize(m).startsWith(base)) {
           if (first) { first=false; return '<mark class="current">'+m+'</mark>'; }
-          return '<mark>'+m+'</mark>';
+          return '<mark style="text-decoration:underline;">'+m+'</mark>';
         }
         return m;
       });
@@ -1377,7 +1388,11 @@ function buildModalFragments(docText, query, pages) {
         }
       }
     }
-    if (fragments.length) return fragments;
+    if (fragments.length) {
+      // Ordenar por número de párrafo
+      fragments.sort((a,b) => a.num - b.num);
+      return fragments;
+    }
   }
 
   // Fallback: fragmentos por posición en texto plano
@@ -1405,6 +1420,24 @@ function buildModalFragments(docText, query, pages) {
     fragments.push({ num: 0, html, titulo: '' });
   }
   return fragments;
+}
+
+function openFullTextAtFragment(docIdx, col, snippetIdx) {
+  // Abrir modal directo en el fragmento correspondiente al snippet clicado
+  const doc = col==='ive' ? docs[docIdx] : docsB[docIdx];
+  if (!doc || !doc.text) return;
+  modalDoc = doc;
+  document.getElementById('modal-title').textContent = doc.name;
+  document.getElementById('modal-search-input').value = lastRaw || '';
+  renderModalBody(fullText(doc), lastRaw || '');
+  // Saltar al fragmento correspondiente
+  if (snippetIdx < modalFragments.length) {
+    modalIdx = snippetIdx;
+    showFragment(snippetIdx);
+    document.getElementById('modal-hit-count').textContent = `${snippetIdx+1} / ${modalFragments.length}`;
+  }
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
 }
 
 function openFullText(docIdx, col) {
@@ -1455,15 +1488,17 @@ function showFragment(idx) {
   const body = document.getElementById('modal-body');
   const frag = modalFragments[idx];
   let label = '';
-  if (frag.num > 0) {
-    label = `<div style="font-family:'Playfair Display',serif;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;">Párrafo ${frag.num}</div>`;
+  // Mostrar subtítulo y número de párrafo juntos
+  if (frag.titulo || frag.num > 0) {
+    let parInfo = frag.num > 0 ? `<span style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-right:10px;">§ ${frag.num}</span>` : '';
+    let titInfo = frag.titulo ? `<span style="font-size:14px;font-weight:600;color:var(--burgundy);">${escHtml(frag.titulo)}</span>` : '';
+    label = `<div style="font-family:'Playfair Display',serif;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border-light);">${parInfo}${titInfo}</div>`;
   }
-  if (frag.titulo) {
-    label += `<div style="font-family:'Playfair Display',serif;font-size:14px;font-weight:600;color:var(--burgundy);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border-light);">${escHtml(frag.titulo)}</div>`;
-  }
+  // Resaltar TODAS las ocurrencias en el fragmento (no solo la primera)
+  let html = frag.html;
   body.innerHTML = `
     <div style="padding:28px 32px; font-size:15px; line-height:2; color:var(--ink-mid);">
-      ${label}${frag.html}
+      ${label}${html}
     </div>`;
 }
 
