@@ -636,7 +636,7 @@ const BUELA_ALL_DEFS = [
 //  ESTADO GLOBAL
 // ══════════════════════════════════════════════════════════
 
-const CACHE_VER = 'ive-v5';
+const CACHE_VER = 'ive-v6';
 const docs  = [];   // IVE
 const docsB = [];   // Buela
 let currentTab   = 'ive';
@@ -897,23 +897,38 @@ async function fetchTXT(url) {
   if (!resp.ok) throw new Error('No se pudo cargar');
   const raw = await resp.text();
 
-  // Si el archivo tiene párrafos marcados con §N., estructurarlos
   if (raw.includes('§')) {
     const parrafos = [];
     const bloques = raw.split(/\n\n+/);
+    let tituloActual = '';
+
     for (const bloque of bloques) {
-      const m = bloque.match(/^§(\d+)\.\s*(.*)/s);
-      if (m) {
-        parrafos.push({ page: parseInt(m[1]), text: m[2].trim() });
-      } else if (bloque.trim()) {
-        parrafos.push({ page: 0, text: bloque.trim() });
+      const bloqueTrim = bloque.trim();
+      if (!bloqueTrim) continue;
+
+      // Párrafo numerado IVE: §5. texto...
+      const mNum = bloqueTrim.match(/^§(\d+)\.\s*(.*)/s);
+      if (mNum) {
+        parrafos.push({ page: parseInt(mNum[1]), text: mNum[2].trim(), titulo: tituloActual });
+        continue;
+      }
+
+      // Título de sección Buela: §TÍTULO§ texto
+      const mTit = bloqueTrim.match(/^§TÍTULO§\s*(.*)/s);
+      if (mTit) {
+        tituloActual = mTit[1].trim();
+        continue;
+      }
+
+      // Texto plano bajo un título
+      if (bloqueTrim) {
+        parrafos.push({ page: 0, text: bloqueTrim, titulo: tituloActual });
       }
     }
     return JSON.stringify(parrafos);
   }
 
-  // Archivo plano sin estructura
-  return JSON.stringify([{ page: 1, text: raw }]);
+  return JSON.stringify([{ page: 1, text: raw, titulo: '' }]);
 }
 async function fetchPDF(url) {
   const resp = await fetch(url);
@@ -1158,10 +1173,11 @@ function showMoreSnippets(cardId, docName, currentShown) {
 function getPageForPos(pages, pos) {
   let cum = 0;
   for (const p of pages) {
-    if (pos < cum + p.text.length + 1) return p.page;
+    if (pos < cum + p.text.length + 1) return { page: p.page, titulo: p.titulo || '' };
     cum += p.text.length + 1;
   }
-  return pages.length > 0 ? pages[pages.length-1].page : 1;
+  const last = pages.length > 0 ? pages[pages.length-1] : null;
+  return { page: last ? last.page : 1, titulo: last ? (last.titulo || '') : '' };
 }
 
 function searchExact(text, pages, phrase) {
@@ -1170,13 +1186,15 @@ function searchExact(text, pages, phrase) {
   const snippets   = [];
   let pos = 0;
   while ((pos = normText.indexOf(normPhrase, pos)) !== -1) {
-    const pageNum = getPageForPos(pages, pos);
+    const loc = getPageForPos(pages, pos);
     const start = Math.max(0, pos-130);
     const end   = Math.min(text.length, pos+normPhrase.length+130);
     let snip = text.slice(start, end).replace(/\s+/g,' ').trim();
     if (start>0) snip='…'+snip;
     if (end<text.length) snip+='…';
-    const meta = pages.length>1 ? `<div class="snippet-meta">pág. ${pageNum}</div>` : '';
+    let meta = '';
+    if (loc.titulo) meta += `<div class="snippet-meta" style="color:var(--burgundy);font-style:italic;">${escHtml(loc.titulo)}</div>`;
+    else if (pages.length>1 && loc.page>0) meta += `<div class="snippet-meta">pág. ${loc.page}</div>`;
     snippets.push(`<div class="snippet">${meta}${highlightFuzzy(escHtml(snip), normalize(phrase), false)}</div>`);
     pos++;
   }
@@ -1213,7 +1231,7 @@ function searchTerms(text, pages, terms, maxDist) {
       const key = Math.floor(pos/60);
       if (used.has(key)) continue;
       used.add(key);
-      const pageNum = getPageForPos(pages, pos);
+      const loc = getPageForPos(pages, pos);
       const start = Math.max(0, pos-130);
       const end   = Math.min(text.length, pos+130);
       let snip = text.slice(start,end).replace(/\s+/g,' ').trim();
@@ -1221,7 +1239,9 @@ function searchTerms(text, pages, terms, maxDist) {
       if (end<text.length) snip+='…';
       let html = escHtml(snip);
       html = highlightFuzzy(html, normalize(terms[0]), normalize(terms[0]).endsWith('*'));
-      const meta = pages.length>1?`<div class="snippet-meta">pág. ${pageNum}</div>`:'';
+      let meta = '';
+      if (loc.titulo) meta = `<div class="snippet-meta" style="color:var(--burgundy);font-style:italic;">${escHtml(loc.titulo)}</div>`;
+      else if (pages.length>1 && loc.page>0) meta = `<div class="snippet-meta">pág. ${loc.page}</div>`;
       snippets.push(`<div class="snippet">${meta}${html}</div>`);
     }
     return snippets;
@@ -1238,7 +1258,7 @@ function searchTerms(text, pages, terms, maxDist) {
       const key=Math.floor(all[i].p/120);
       if (!used.has(key)) {
         used.add(key);
-        const pageNum=getPageForPos(pages,all[i].p);
+        const loc=getPageForPos(pages,all[i].p);
         const start=Math.max(0,all[i].p-80);
         const end=Math.min(text.length,maxP+100);
         let snip=text.slice(start,end).replace(/\s+/g,' ').trim();
@@ -1246,7 +1266,9 @@ function searchTerms(text, pages, terms, maxDist) {
         if(end<text.length) snip+='…';
         let html=escHtml(snip);
         for(const term of terms){const nt=normalize(term);html=highlightFuzzy(html,nt,nt.endsWith('*'));}
-        const meta=pages.length>1?`<div class="snippet-meta">pág. ${pageNum}</div>`:'';
+        let meta='';
+        if(loc.titulo) meta=`<div class="snippet-meta" style="color:var(--burgundy);font-style:italic;">${escHtml(loc.titulo)}</div>`;
+        else if(pages.length>1 && loc.page>0) meta=`<div class="snippet-meta">pág. ${loc.page}</div>`;
         snippets.push(`<div class="snippet">${meta}${html}</div>`);
       }
     }
@@ -1351,7 +1373,7 @@ function buildModalFragments(docText, query, pages) {
         if (!seen.has(key)) {
           seen.add(key);
           let html = highlightAll(escHtml(p.text));
-          fragments.push({ num: p.page, html });
+          fragments.push({ num: p.page, html, titulo: p.titulo || '' });
         }
       }
     }
@@ -1380,7 +1402,7 @@ function buildModalFragments(docText, query, pages) {
     if (start > 0) snip = '…' + snip;
     if (end < docText.length) snip += '…';
     let html = highlightAll(escHtml(snip));
-    fragments.push({ num: 0, html });
+    fragments.push({ num: 0, html, titulo: '' });
   }
   return fragments;
 }
@@ -1432,12 +1454,16 @@ function renderModalBody(text, query) {
 function showFragment(idx) {
   const body = document.getElementById('modal-body');
   const frag = modalFragments[idx];
-  const numLabel = frag.num > 0
-    ? `<div style="font-family:'Playfair Display',serif;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:10px;">Párrafo ${frag.num}</div>`
-    : '';
+  let label = '';
+  if (frag.num > 0) {
+    label = `<div style="font-family:'Playfair Display',serif;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;">Párrafo ${frag.num}</div>`;
+  }
+  if (frag.titulo) {
+    label += `<div style="font-family:'Playfair Display',serif;font-size:14px;font-weight:600;color:var(--burgundy);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border-light);">${escHtml(frag.titulo)}</div>`;
+  }
   body.innerHTML = `
     <div style="padding:28px 32px; font-size:15px; line-height:2; color:var(--ink-mid);">
-      ${numLabel}${frag.html}
+      ${label}${frag.html}
     </div>`;
 }
 
