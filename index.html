@@ -905,33 +905,78 @@ async function fetchTXT(url) {
 
   if (raw.includes('§')) {
     const parrafos = [];
-    const bloques = raw.split(/\n\n+/);
-    let tituloActual = '';
+    // Dividir por marcadores §, no por bloques de texto vacío
+    // Primero detectar si es formato IVE (§N.) o Buela (§TÍTULO§)
+    const esIVE = /^§\d+\./m.test(raw);
 
-    for (const bloque of bloques) {
-      const bloqueTrim = bloque.trim();
-      if (!bloqueTrim) continue;
-
-      // Párrafo numerado IVE: §5. texto...
-      const mNum = bloqueTrim.match(/^§(\d+)\.\s*(.*)/s);
-      if (mNum) {
-        parrafos.push({ page: parseInt(mNum[1]), text: mNum[2].trim(), titulo: tituloActual });
-        continue;
+    if (esIVE) {
+      // Formato IVE: §N. texto — dividir por cada marcador de párrafo
+      // Los títulos de sección aparecen como líneas en MAYÚSCULAS o con formato especial
+      // antes del §N., los capturamos como contexto del párrafo
+      const reParrafo = /§(\d+)\.\s*/g;
+      let m, prev = 0;
+      const matches = [];
+      while ((m = reParrafo.exec(raw)) !== null) {
+        matches.push({ num: parseInt(m[1]), start: m.index + m[0].length });
       }
+      for (let i = 0; i < matches.length; i++) {
+        const cur = matches[i];
+        const end = i + 1 < matches.length ? matches[i+1].start - matches[i+1].start + matches[i+1].start - cur.start + cur.start : raw.length;
+        // Texto del párrafo: desde después del marcador hasta el siguiente §N.
+        const nextStart = i + 1 < matches.length ? matches[i+1].start - (raw.slice(cur.start).search(/§\d+\./)) : raw.length;
+        // Buscar título de capítulo en el bloque ANTES de este §N.
+        // Es el texto en mayúsculas / línea corta que precede al §
+        const blockBefore = raw.slice(prev, cur.start - (raw.slice(prev, cur.start).length - raw.slice(prev, cur.start).lastIndexOf('\n§')));
+        prev = i + 1 < matches.length ? matches[i+1].start : raw.length;
 
-      // Título de sección Buela: §TÍTULO§ texto
-      const mTit = bloqueTrim.match(/^§TÍTULO§\s*(.*)/s);
-      if (mTit) {
-        tituloActual = mTit[1].trim();
-        continue;
+        // Texto del párrafo hasta el próximo §N.
+        const textoEnd = i + 1 < matches.length
+          ? raw.indexOf('§' + matches[i+1].num + '.', cur.start)
+          : raw.length;
+        const texto = raw.slice(cur.start, textoEnd).trim();
+
+        // Buscar si hay un §TÍTULO§ antes de este párrafo (para documentos mixtos)
+        const segmento = raw.slice(0, cur.start);
+        const ultimoTitulo = segmento.lastIndexOf('§TÍTULO§');
+        let titulo = '';
+        if (ultimoTitulo !== -1) {
+          const despuesTitulo = raw.slice(ultimoTitulo + 8).split(/\n/)[0].trim();
+          // Solo usarlo si está suficientemente cerca (menos de 2000 chars antes)
+          if (cur.start - ultimoTitulo < 2000) titulo = despuesTitulo;
+        }
+
+        parrafos.push({ page: cur.num, text: texto, titulo });
       }
+    } else {
+      // Formato Buela: §TÍTULO§ título\n\ntexto\n\ntexto...
+      // Cada §TÍTULO§ abre una nueva sección; el título se resetea solo entre secciones
+      const bloques = raw.split(/(?=§TÍTULO§)/);
+      for (const bloque of bloques) {
+        const bloqueTrim = bloque.trim();
+        if (!bloqueTrim) continue;
 
-      // Texto plano bajo un título
-      if (bloqueTrim) {
-        parrafos.push({ page: 0, text: bloqueTrim, titulo: tituloActual });
+        const mTit = bloqueTrim.match(/^§TÍTULO§\s*(.+?)(?:\n|$)([\s\S]*)/);
+        if (mTit) {
+          const titulo = mTit[1].trim();
+          const resto = mTit[2];
+          // Sub-bloques de texto dentro de esta sección
+          const subBloques = resto.split(/\n\n+/);
+          for (const sb of subBloques) {
+            const t = sb.trim();
+            if (t) parrafos.push({ page: 0, text: t, titulo });
+          }
+        } else {
+          // Texto antes del primer §TÍTULO§ (encabezado del documento, sin título de sección)
+          const subBloques = bloqueTrim.split(/\n\n+/);
+          for (const sb of subBloques) {
+            const t = sb.trim();
+            if (t) parrafos.push({ page: 0, text: t, titulo: '' });
+          }
+        }
       }
     }
-    return JSON.stringify(parrafos);
+
+    if (parrafos.length) return JSON.stringify(parrafos);
   }
 
   return JSON.stringify([{ page: 1, text: raw, titulo: '' }]);
@@ -1141,7 +1186,7 @@ function buildDocCard(r, col, activeDocs) {
     <div class="result-snippets">
       ${shownWithClick.join('')}
       ${remaining>0
-        ? `<div class="snippet-show-more" id="more-${id}" onclick="showMoreSnippets('${id}','${r.name}',${SNIP_PAGE})">
+        ? `<div class="snippet-show-more" id="more-${id}" onclick="showMoreSnippets('${id}','${r.name}',${SNIP_PAGE},${docIdx},'${col}')">
              Mostrar más resultados (${remaining} restantes)
            </div>`
         : ''}
@@ -1152,18 +1197,22 @@ function buildDocCard(r, col, activeDocs) {
 
 function toggleDoc(id) { document.getElementById(id).classList.toggle('collapsed'); }
 
-function showMoreSnippets(cardId, docName, currentShown) {
+function showMoreSnippets(cardId, docName, currentShown, docIdx, col) {
   const allSnips = snippetsMap[docName] || [];
   const newShown = currentShown + SNIP_PAGE;
   const card     = document.getElementById(cardId);
   const snippetsDiv = card.querySelector('.result-snippets');
   const moreBtn = document.getElementById('more-'+cardId);
 
-  // Añadir los nuevos snippets antes del botón
+  // Añadir los nuevos snippets con onclick correcto usando índice global
   const newBatch = allSnips.slice(currentShown, newShown);
-  for (const s of newBatch) {
+  for (let i = 0; i < newBatch.length; i++) {
+    const globalIdx = currentShown + i;
     const tmp = document.createElement('div');
-    tmp.innerHTML = s;
+    tmp.innerHTML = newBatch[i].replace(
+      '<div class="snippet">',
+      `<div class="snippet" onclick="openFullTextAtFragment(${docIdx},'${col}',${globalIdx})" title="Clic para ver el párrafo completo">`
+    );
     snippetsDiv.insertBefore(tmp.firstChild, moreBtn);
   }
 
@@ -1172,7 +1221,7 @@ function showMoreSnippets(cardId, docName, currentShown) {
     moreBtn.remove();
   } else {
     moreBtn.textContent = `Mostrar más resultados (${remaining} restantes)`;
-    moreBtn.onclick = () => showMoreSnippets(cardId, docName, newShown);
+    moreBtn.onclick = () => showMoreSnippets(cardId, docName, newShown, docIdx, col);
   }
 }
 
