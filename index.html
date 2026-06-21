@@ -642,7 +642,7 @@ const BUELA_ALL_DEFS = [
 //  ESTADO GLOBAL
 // ══════════════════════════════════════════════════════════
 
-const CACHE_VER = 'ive-v8';
+const CACHE_VER = 'ive-v10';
 const docs  = [];   // IVE
 const docsB = [];   // Buela
 let currentTab   = 'ive';
@@ -742,7 +742,7 @@ function buildIVEList() {
     <div class="doc-item loading-doc" id="item-ive-${i}">
       <input type="checkbox" id="doc-ive-${i}" checked
         onchange="docs[${i}]&&(docs[${i}].selected=this.checked);updateSelAll('ive')">
-      <label for="doc-ive-${i}" title="${escHtml(name)}">${escHtml(name.replace(/\.pdf$/i,'').replace(/-/g,' ').replace(/-/g,' '))}</label>
+      <label for="doc-ive-${i}" title="${escHtml(name)}">${escHtml(name.replace(/\.pdf$/i,'').replace(/-TEXT$/i,'').replace(/-/g,' ').trim())}</label>
       <span class="err-icon">⚠</span>
       <span class="hit-badge" id="badge-ive-${i}"></span>
     </div>`).join('');
@@ -776,7 +776,7 @@ function buildAllList() {
     html += `<div class="doc-item" id="item-all-ive-${i}">
       <input type="checkbox" id="doc-all-ive-${i}" checked
         onchange="docs[${i}]&&(docs[${i}].selected=this.checked)">
-      <label for="doc-all-ive-${i}">${escHtml(name.replace(/\.pdf$/i,'').replace(/-/g,' ').replace(/-/g,' '))}</label>
+      <label for="doc-all-ive-${i}">${escHtml(name.replace(/\.pdf$/i,'').replace(/-TEXT$/i,'').replace(/-/g,' ').trim())}</label>
       <span class="hit-badge" id="badge-all-ive-${i}"></span>
     </div>`;
   });
@@ -820,7 +820,7 @@ async function loadAllDocs() {
   let loaded=0, completed=0;
   const tasks = PDF_FILES.map(async (name,i) => {
     const key = CACHE_VER+':pdf:'+name;
-    document.getElementById('load-det-ive').textContent = 'Cargando: ' + name.replace(/\.pdf$/i,'').replace(/-/g,' ');
+    document.getElementById('load-det-ive').textContent = 'Cargando: ' + name.replace(/\.pdf$/i,'').replace(/-TEXT$/i,'').replace(/-/g,' ').trim();
     let text = null;
     if (db) { try { text = await cacheGet(db, key); } catch(e) {} }
     if (!text) {
@@ -835,7 +835,7 @@ async function loadAllDocs() {
         catch(e2) { text = null; }
       }
     }
-    docs[i] = { name: name.replace(/\.pdf$/i,'').replace(/-/g,' '), text: text||'', selected: !!text, collection:'ive' };
+    docs[i] = { name: name.replace(/\.pdf$/i,'').replace(/-TEXT$/i,'').replace(/-/g,' ').trim(), text: text||'', selected: !!text, collection:'ive' };
     const item = document.getElementById('item-ive-'+i);
     if (item) item.classList.replace('loading-doc', text ? 'loaded-doc' : 'error-doc');
     if (!text) {
@@ -1346,15 +1346,19 @@ function buildModalFragments(docText, query, pages) {
   else                        terms=q.terms;
 
   function highlightAll(html) {
-    // Resaltar TODAS las ocurrencias — primera en rojo, resto en amarillo subrayado
+    // Resaltar TODAS las ocurrencias normalizando tildes correctamente
     for (const term of terms) {
       const nt = normalize(term);
       const isWild = nt.endsWith('*');
       const base   = isWild ? nt.slice(0,-1) : nt;
-      const re2 = new RegExp('('+escRx(base)+(isWild?'[a-záéíóúüñA-ZÁÉÍÓÚÜÑ]*':'')+')','gi');
+      // Usar highlightFuzzy que ya maneja normalización correctamente
       let first = true;
+      // Reemplazar usando regex sobre texto normalizado pero conservando original
+      const re2 = new RegExp('([a-záéíóúüñA-ZÁÉÍÓÚÜÑ]+)','g');
       html = html.replace(re2, m => {
-        if (normalize(m).startsWith(base)) {
+        const nm = normalize(m);
+        const matches = isWild ? nm.startsWith(base) : nm === base;
+        if (matches) {
           if (first) { first=false; return '<mark class="current">'+m+'</mark>'; }
           return '<mark style="text-decoration:underline;">'+m+'</mark>';
         }
