@@ -1383,114 +1383,197 @@ function exportResults() {
 }
 
 // ══════════════════════════════════════════════════════════
-//  MODAL
+//  MODAL — nueva lógica
+//  · IVE (§N.): muestra el párrafo COMPLETO
+//  · Buela / plano: muestra ~500 palabras alrededor de la ocurrencia
+//  · Todas las ocurrencias en amarillo; la "actual" en rojo
+//  · Anterior/Siguiente navega entre fragmentos/párrafos
 // ══════════════════════════════════════════════════════════
 
 let modalDoc=null, modalFragments=[], modalIdx=0;
 
-// Extrae fragmentos de texto alrededor de cada coincidencia
-function buildModalFragments(docText, query, pages) {
+// Extrae los términos de búsqueda desde la query
+function queryTerms(query) {
   const q = parseQuery(query);
-  let terms = [];
-  if      (q.mode==='exact') terms=[q.phrase];
-  else if (q.mode==='or')    terms=q.groups.flatMap(g=>g.split(/\s+/).filter(Boolean));
-  else                        terms=q.terms;
+  if (q.mode==='exact') return [q.phrase];
+  if (q.mode==='or')    return q.groups.flatMap(g=>g.split(/\s+/).filter(Boolean));
+  return q.terms;
+}
 
-  function highlightAll(html) {
-    // Resaltar TODAS las ocurrencias normalizando tildes correctamente
-    for (const term of terms) {
-      const nt = normalize(term);
-      const isWild = nt.endsWith('*');
-      const base   = isWild ? nt.slice(0,-1) : nt;
-      // Usar highlightFuzzy que ya maneja normalización correctamente
-      let first = true;
-      // Reemplazar usando regex sobre texto normalizado pero conservando original
-      const re2 = new RegExp('([a-záéíóúüñA-ZÁÉÍÓÚÜÑ]+)','g');
-      html = html.replace(re2, m => {
-        const nm = normalize(m);
-        const matches = isWild ? nm.startsWith(base) : nm === base;
-        if (matches) {
-          if (first) { first=false; return '<mark class="current">'+m+'</mark>'; }
-          return '<mark style="text-decoration:underline;">'+m+'</mark>';
-        }
-        return m;
-      });
-    }
-    return html;
-  }
-
-  const fragments = [];
-
-  // Si hay párrafos estructurados (§N.), buscar en cada párrafo
-  if (pages && pages.length > 1 && pages.some(p => p.page > 0)) {
-    const seen = new Set();
-    for (const p of pages) {
-      const normP = normalize(p.text);
-      let hasMatch = false;
-      for (const term of terms) {
-        const nt = normalize(term);
-        const isWild = nt.endsWith('*');
-        const base   = isWild ? nt.slice(0,-1) : nt;
-        const re = new RegExp((isWild?'':'\\b')+escRx(base)+(isWild?'[a-záéíóúüñ]*':'\\b'),'i');
-        if (re.test(normP)) { hasMatch = true; break; }
-      }
-      if (hasMatch) {
-        const key = p.page + ':' + p.text.slice(0,40);
-        if (!seen.has(key)) {
-          seen.add(key);
-          let html = highlightAll(escHtml(p.text));
-          fragments.push({ num: p.page, html, titulo: p.titulo || '' });
-        }
-      }
-    }
-    if (fragments.length) {
-      // Ordenar por número de párrafo
-      fragments.sort((a,b) => a.num - b.num);
-      return fragments;
-    }
-  }
-
-  // Fallback: fragmentos por posición en texto plano
-  const normText = normalize(docText);
-  const allPositions = [];
+// Resalta todas las ocurrencias de los términos en un HTML:
+// - La ocurrencia en posición `currentPos` (en el texto plano del fragmento) → rojo
+// - El resto → amarillo
+// Si currentPos es null → todas en amarillo
+function highlightWithCurrent(plainText, terms, currentPos) {
+  // Recopilar todas las posiciones de coincidencia en el texto plano normalizado
+  const norm = normalize(plainText);
+  const hits = []; // { start, end } en coordenadas del texto original
   for (const term of terms) {
     const nt = normalize(term);
     const isWild = nt.endsWith('*');
     const base   = isWild ? nt.slice(0,-1) : nt;
     const re = new RegExp((isWild?'':'\\b')+escRx(base)+(isWild?'[a-záéíóúüñ]*':'\\b'),'gi');
     let m;
-    while((m=re.exec(normText))!==null) allPositions.push({ pos: m.index, len: m[0].length });
+    while ((m = re.exec(norm)) !== null) {
+      hits.push({ start: m.index, end: m.index + m[0].length });
+    }
   }
-  allPositions.sort((a,b)=>a.pos-b.pos);
-  if (!allPositions.length) return [];
+  hits.sort((a,b) => a.start - b.start);
 
-  const CONTEXT = 280;
-  for (const hit of allPositions) {
-    const start = Math.max(0, hit.pos - CONTEXT);
-    const end   = Math.min(docText.length, hit.pos + hit.len + CONTEXT);
-    let snip = docText.slice(start, end).replace(/\s+/g,' ').trim();
-    if (start > 0) snip = '…' + snip;
-    if (end < docText.length) snip += '…';
-    let html = highlightAll(escHtml(snip));
-    fragments.push({ num: 0, html, titulo: '' });
+  // Determinar cuál hit es el "actual" (el más cercano a currentPos)
+  let currentHitIdx = -1;
+  if (currentPos !== null && hits.length) {
+    let best = Infinity;
+    hits.forEach((h,i) => {
+      const dist = Math.abs(h.start - currentPos);
+      if (dist < best) { best = dist; currentHitIdx = i; }
+    });
   }
+
+  // Construir HTML intercalando marks
+  let out = '';
+  let pos = 0;
+  for (let i = 0; i < hits.length; i++) {
+    const h = hits[i];
+    if (h.start < pos) continue; // solapamiento, ignorar
+    out += escHtml(plainText.slice(pos, h.start));
+    const word = plainText.slice(h.start, h.end);
+    if (i === currentHitIdx) {
+      out += '<mark class="current">' + escHtml(word) + '</mark>';
+    } else {
+      out += '<mark>' + escHtml(word) + '</mark>';
+    }
+    pos = h.end;
+  }
+  out += escHtml(plainText.slice(pos));
+  return out;
+}
+
+// Construye los fragmentos del modal según el tipo de documento:
+// - IVE (páginas con page > 0): cada párrafo §N. que tenga coincidencia
+// - Buela / plano: ventana de ~500 palabras por cada ocurrencia
+function buildModalFragments(query, pages) {
+  const terms = queryTerms(query);
+  const fragments = [];
+
+  const esIVE = pages.length > 0 && pages.some(p => p.page > 0);
+
+  if (esIVE) {
+    // Un fragmento = un párrafo §N. completo con al menos una coincidencia
+    for (const p of pages) {
+      const normP = normalize(p.text);
+      let hitPos = null;
+      for (const term of terms) {
+        const nt = normalize(term);
+        const isWild = nt.endsWith('*');
+        const base   = isWild ? nt.slice(0,-1) : nt;
+        const re = new RegExp((isWild?'':'\\b')+escRx(base)+(isWild?'[a-záéíóúüñ]*':'\\b'),'i');
+        const m = re.exec(normP);
+        if (m) { hitPos = m.index; break; }
+      }
+      if (hitPos !== null) {
+        fragments.push({
+          num:    p.page,
+          titulo: p.titulo || '',
+          plain:  p.text,
+          hitPos  // posición de la primera ocurrencia dentro del texto del párrafo
+        });
+      }
+    }
+    fragments.sort((a,b) => a.num - b.num);
+    return fragments;
+  }
+
+  // Buela / texto plano: ventana de ~500 palabras alrededor de cada ocurrencia
+  // Unimos todos los párrafos en texto plano continuo
+  const fullPlain = pages.map(p=>p.text).join('\n\n');
+  const normFull  = normalize(fullPlain);
+
+  // Recopilar todas las posiciones de ocurrencia
+  const allHits = [];
+  for (const term of terms) {
+    const nt = normalize(term);
+    const isWild = nt.endsWith('*');
+    const base   = isWild ? nt.slice(0,-1) : nt;
+    const re = new RegExp((isWild?'':'\\b')+escRx(base)+(isWild?'[a-záéíóúüñ]*':'\\b'),'gi');
+    let m;
+    while ((m = re.exec(normFull)) !== null) allHits.push(m.index);
+  }
+  allHits.sort((a,b) => a-b);
+  if (!allHits.length) return [];
+
+  // Agrupar hits cercanos en una misma ventana (~500 palabras ≈ 3000 chars)
+  const WIN = 1500; // chars a cada lado
+  const used = new Set();
+  for (const hitPos of allHits) {
+    // Buscar la página Buela que contiene esta posición para el título
+    let cum = 0, tituloFrag = '';
+    for (const p of pages) {
+      if (hitPos < cum + p.text.length + 2) { tituloFrag = p.titulo || ''; break; }
+      cum += p.text.length + 2;
+    }
+
+    const start = Math.max(0, hitPos - WIN);
+    const end   = Math.min(fullPlain.length, hitPos + WIN);
+    const key   = Math.floor(hitPos / (WIN * 0.8));
+    if (used.has(key)) continue;
+    used.add(key);
+
+    // Ajustar bordes a espacios para no cortar palabras
+    let s = start, e = end;
+    while (s > 0 && fullPlain[s] !== ' ' && fullPlain[s] !== '\n') s--;
+    while (e < fullPlain.length && fullPlain[e] !== ' ' && fullPlain[e] !== '\n') e++;
+
+    const plain = (s > 0 ? '…' : '') + fullPlain.slice(s, e).trim() + (e < fullPlain.length ? '…' : '');
+    // hitPos dentro del fragmento recortado
+    const localHitPos = hitPos - s + (s > 0 ? 1 : 0);
+
+    fragments.push({ num: 0, titulo: tituloFrag, plain, hitPos: localHitPos });
+  }
+
   return fragments;
 }
 
+// Renderiza un fragmento en el modal, resaltando todas las ocurrencias
+// La actual (hitPos) en rojo, el resto en amarillo
+function showFragment(idx) {
+  const body = document.getElementById('modal-body');
+  const frag = modalFragments[idx];
+  const terms = modalDoc ? queryTerms(document.getElementById('modal-search-input').value || lastRaw || '') : [];
+
+  // Cabecera: § N y/o título de sección
+  let label = '';
+  if (frag.titulo || frag.num > 0) {
+    const parInfo = frag.num > 0
+      ? `<span style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-right:10px;">§ ${frag.num}</span>`
+      : '';
+    const titInfo = frag.titulo
+      ? `<span style="font-size:14px;font-weight:600;color:var(--burgundy);">${escHtml(frag.titulo)}</span>`
+      : '';
+    label = `<div style="font-family:'Playfair Display',serif;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border-light);">${parInfo}${titInfo}</div>`;
+  }
+
+  const html = highlightWithCurrent(frag.plain, terms, frag.hitPos);
+
+  body.style.overflowY = 'auto';
+  body.style.padding   = '0';
+  body.style.whiteSpace = 'normal';
+  body.innerHTML = `<div style="padding:28px 32px;font-size:15px;line-height:2;color:var(--ink-mid);">${label}${html}</div>`;
+
+  // Scroll al mark.current dentro del modal
+  requestAnimationFrame(() => {
+    const cur = body.querySelector('mark.current');
+    if (cur) cur.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  });
+}
+
 function openFullTextAtFragment(docIdx, col, snippetIdx) {
-  // Abrir modal directo en el fragmento correspondiente al snippet clicado
   const doc = col==='ive' ? docs[docIdx] : docsB[docIdx];
   if (!doc || !doc.text) return;
   modalDoc = doc;
   document.getElementById('modal-title').textContent = doc.name;
   document.getElementById('modal-search-input').value = lastRaw || '';
-  renderModalBody(fullText(doc), lastRaw || '');
-  // Saltar al fragmento correspondiente
-  if (snippetIdx < modalFragments.length) {
-    modalIdx = snippetIdx;
-    showFragment(snippetIdx);
-    document.getElementById('modal-hit-count').textContent = `${snippetIdx+1} / ${modalFragments.length}`;
-  }
+  _renderModal(lastRaw || '', snippetIdx);
   document.getElementById('modal-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
 }
@@ -1501,27 +1584,28 @@ function openFullText(docIdx, col) {
   modalDoc = doc;
   document.getElementById('modal-title').textContent = doc.name;
   document.getElementById('modal-search-input').value = lastRaw || '';
-  renderModalBody(fullText(doc), lastRaw || '');
+  _renderModal(lastRaw || '', 0);
   document.getElementById('modal-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
   setTimeout(()=>document.getElementById('modal-search-input').focus(), 100);
 }
 
-function renderModalBody(text, query) {
+function _renderModal(query, startIdx) {
   const body = document.getElementById('modal-body');
   const hc   = document.getElementById('modal-hit-count');
-  modalFragments=[]; modalIdx=0;
+  modalFragments = []; modalIdx = 0;
 
-  if (!query) {
+  if (!query || !modalDoc) {
     body.style.overflowY = 'auto';
     body.style.padding   = '24px 30px';
     body.style.whiteSpace = 'pre-wrap';
-    body.textContent = text;
+    body.textContent = fullText(modalDoc);
     hc.textContent = '';
     return;
   }
 
-  modalFragments = buildModalFragments(text, query, modalDoc ? parsedPages(modalDoc) : null);
+  const pages = parsedPages(modalDoc);
+  modalFragments = buildModalFragments(query, pages);
 
   if (!modalFragments.length) {
     body.style.overflowY = 'auto';
@@ -1532,29 +1616,10 @@ function renderModalBody(text, query) {
     return;
   }
 
-  body.style.overflowY = 'hidden';
-  body.style.padding   = '0';
-  body.style.whiteSpace = 'normal';
-  showFragment(0);
-  hc.textContent = `1 / ${modalFragments.length}`;
-}
-
-function showFragment(idx) {
-  const body = document.getElementById('modal-body');
-  const frag = modalFragments[idx];
-  let label = '';
-  // Mostrar subtítulo y número de párrafo juntos
-  if (frag.titulo || frag.num > 0) {
-    let parInfo = frag.num > 0 ? `<span style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-right:10px;">§ ${frag.num}</span>` : '';
-    let titInfo = frag.titulo ? `<span style="font-size:14px;font-weight:600;color:var(--burgundy);">${escHtml(frag.titulo)}</span>` : '';
-    label = `<div style="font-family:'Playfair Display',serif;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border-light);">${parInfo}${titInfo}</div>`;
-  }
-  // Resaltar TODAS las ocurrencias en el fragmento (no solo la primera)
-  let html = frag.html;
-  body.innerHTML = `
-    <div style="padding:28px 32px; font-size:15px; line-height:2; color:var(--ink-mid);">
-      ${label}${html}
-    </div>`;
+  // Respetar el índice del snippet clicado (acotado al rango válido)
+  modalIdx = Math.min(startIdx, modalFragments.length - 1);
+  showFragment(modalIdx);
+  hc.textContent = `${modalIdx+1} / ${modalFragments.length}`;
 }
 
 function modalNav(dir) {
@@ -1565,9 +1630,13 @@ function modalNav(dir) {
 }
 
 function modalSearch() {
-  if (modalDoc) renderModalBody(fullText(modalDoc), document.getElementById('modal-search-input').value.trim());
+  if (modalDoc) _renderModal(document.getElementById('modal-search-input').value.trim(), 0);
 }
 function modalSearchNav(e) { if(e.key==='Enter') modalNav(e.shiftKey?-1:1); }
+
+// Alias para compatibilidad con renderModalBody si quedó alguna referencia
+function renderModalBody(text, query) { _renderModal(query, 0); }
+
 function closeModal() {
   document.getElementById('modal-overlay').classList.remove('open');
   document.body.style.overflow='';
