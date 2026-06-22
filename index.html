@@ -420,6 +420,8 @@ header {
 }
 .modal-nav-btn:hover { background: var(--navy); color: #fff; border-color: var(--navy); }
 .modal-hit-count { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-light); white-space: nowrap; }
+.cite-num { color: var(--gold); opacity: 0.7; font-size: 0.82em; vertical-align: super; font-family: 'JetBrains Mono', monospace; letter-spacing: -0.02em; }
+#search-recent { font-size: 12px; }
 .modal-body {
   overflow-y: hidden; padding: 0; flex: 1;
   font-size: 14.5px; line-height: 2; color: var(--ink-mid);
@@ -545,7 +547,9 @@ header {
           <label>Término(s) a buscar</label>
           <input type="text" id="search-input"
             placeholder='eucarist*   ·   "vida eucarística"   ·   gracia misión'
+            list="search-recent"
             onkeydown="if(event.key==='Enter') doSearch()" oninput="if(!this.value.trim()) clearResults()">
+          <datalist id="search-recent"></datalist>
         </div>
         <div class="distance-wrap">
           <label>Distancia máx.</label>
@@ -1031,6 +1035,13 @@ function doSearch() {
 
   setTimeout(() => {
     lastRaw = raw;
+    // Guardar en búsquedas recientes
+    try {
+      let recents = JSON.parse(localStorage.getItem('ive-recents') || '[]');
+      recents = [raw, ...recents.filter(r => r !== raw)].slice(0, 8);
+      localStorage.setItem('ive-recents', JSON.stringify(recents));
+      updateRecentsList(recents);
+    } catch(e) {}
     if (currentTab === 'all') {
       runSearchAll(raw, maxDist);
     } else {
@@ -1555,7 +1566,10 @@ function showFragment(idx) {
     label = `<div style="font-family:'Playfair Display',serif;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border-light);">${parInfo}${titInfo}</div>`;
   }
 
-  const html = highlightWithCurrent(frag.plain, terms, frag.hitPos);
+  // Resaltar texto con términos de búsqueda
+  let html = highlightWithCurrent(frag.plain, terms, frag.hitPos);
+  // FIX 1: resaltar números de cita flotante (ej: "comunión»42") en dorado suave
+  html = html.replace(/(\w[»"']?)(\d{1,3})(?=[\s,.<]|$)/g, '$1<span class="cite-num">$2</span>');
 
   body.style.overflowY = 'auto';
   body.style.padding   = '0';
@@ -1621,14 +1635,18 @@ function _renderModal(query, startIdx) {
   // Respetar el índice del snippet clicado (acotado al rango válido)
   modalIdx = Math.min(startIdx, modalFragments.length - 1);
   showFragment(modalIdx);
-  hc.textContent = `${modalIdx+1} / ${modalFragments.length}`;
+  const frag0 = modalFragments[modalIdx];
+  const parLabel = frag0 && frag0.num > 0 ? ` · § ${frag0.num}` : '';
+  hc.textContent = `${modalIdx+1} / ${modalFragments.length}${parLabel}`;
 }
 
 function modalNav(dir) {
   if (!modalFragments.length) return;
   modalIdx = (modalIdx + dir + modalFragments.length) % modalFragments.length;
   showFragment(modalIdx);
-  document.getElementById('modal-hit-count').textContent = `${modalIdx+1} / ${modalFragments.length}`;
+  const fragN = modalFragments[modalIdx];
+  const parLabelN = fragN && fragN.num > 0 ? ` · § ${fragN.num}` : '';
+  document.getElementById('modal-hit-count').textContent = `${modalIdx+1} / ${modalFragments.length}${parLabelN}`;
 }
 
 function modalSearch() {
@@ -1659,6 +1677,17 @@ function clearResults() {
 // ══════════════════════════════════════════════════════════
 //  INICIO
 // ══════════════════════════════════════════════════════════
+// Inicializar búsquedas recientes
+function updateRecentsList(recents) {
+  const dl = document.getElementById('search-recent');
+  if (!dl) return;
+  dl.innerHTML = recents.map(r => `<option value="${escHtml(r)}">`).join('');
+}
+try {
+  const saved = JSON.parse(localStorage.getItem('ive-recents') || '[]');
+  updateRecentsList(saved);
+} catch(e) {}
+
 loadAllDocs();
 loadAllDocsB();
 </script>
