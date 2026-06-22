@@ -421,6 +421,22 @@ header {
 .modal-nav-btn:hover { background: var(--navy); color: #fff; border-color: var(--navy); }
 .modal-hit-count { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-light); white-space: nowrap; }
 .cite-num { color: var(--gold); opacity: 0.7; font-size: 0.82em; vertical-align: super; font-family: 'JetBrains Mono', monospace; letter-spacing: -0.02em; }
+/* ── Términos frecuentes ── */
+.freq-panel { margin-top: 16px; border-top: 1px solid var(--border-light); padding-top: 14px; }
+.freq-panel summary { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-light); cursor: pointer; user-select: none; padding: 4px 0; }
+.freq-panel summary:hover { color: var(--navy); }
+.freq-cloud { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+.freq-tag { font-size: 11px; padding: 3px 8px; border-radius: 12px; background: var(--bg-card); border: 1px solid var(--border-light); color: var(--ink-mid); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.freq-tag:hover { background: var(--navy); color: #fff; border-color: var(--navy); }
+.freq-tag .freq-n { font-family: 'JetBrains Mono',monospace; font-size: 9px; color: var(--gold); margin-left: 3px; }
+/* ── Rango §N ── */
+.range-wrap { display: flex; gap: 6px; align-items: flex-end; }
+.range-wrap label { display: block; font-size: 11px; color: var(--ink-light); margin-bottom: 5px; font-style: italic; }
+.range-wrap input[type=number] { width: 64px; padding: 8px 10px; border: 1px solid var(--border-light); border-radius: 6px; font-size: 13px; background: var(--bg-card); color: var(--ink-dark); }
+.range-wrap input[type=number]:focus { border-color: var(--navy); outline: none; }
+/* ── Export PDF btn ── */
+.export-pdf-btn { padding: 7px 14px; background: var(--burgundy); color: #fff; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; font-family: inherit; margin-left: 6px; }
+.export-pdf-btn:hover { background: var(--navy); }
 #search-recent { font-size: 12px; }
 .modal-body {
   overflow-y: hidden; padding: 0; flex: 1;
@@ -537,6 +553,13 @@ header {
       <div class="doc-list" id="doc-list-all"></div>
     </div>
 
+    <!-- Términos frecuentes -->
+    <div class="sb-section freq-panel" id="sb-freq">
+      <details>
+        <summary>✦ Términos frecuentes</summary>
+        <div class="freq-cloud" id="freq-cloud"><em style="font-size:11px;color:var(--ink-light)">Disponible tras cargar los documentos</em></div>
+      </details>
+    </div>
   </aside>
 
   <!-- ═══ MAIN ═══ -->
@@ -557,11 +580,19 @@ header {
         </div>
         <button class="search-btn" id="search-btn" onclick="doSearch()" disabled>Buscar</button>
       </div>
+      <div class="search-row" style="margin-top:8px;gap:8px;align-items:flex-end;">
+        <div class="range-wrap">
+          <div><label>§ Desde (IVE)</label><input type="number" id="range-from" placeholder="1" min="1"></div>
+          <div><label>§ Hasta</label><input type="number" id="range-to" placeholder="fin" min="1"></div>
+        </div>
+        <div style="flex:1"></div>
+      </div>
       <div class="search-hints">
         <span><code>eucarist*</code> familia de palabras</span>
         <span><code>"frase exacta"</code> entre comillas</span>
         <span><code>gracia misión</code> palabras cercanas</span>
         <span><code>gracia OR esperanza</code> una u otra</span>
+        <span style="color:var(--gold)">§ Desde/Hasta filtra por párrafo en IVE</span>
       </div>
     </div>
 
@@ -668,6 +699,8 @@ const snippetsMap = {};
 // ══════════════════════════════════════════════════════════
 
 function switchTab(tab) {
+  // Construir nube de términos para la pestaña activa
+  setTimeout(() => buildFreqCloud(tab), 100);
   currentTab = tab;
   ['ive','buela','all'].forEach(t => {
     document.getElementById('tab-'+t).classList.toggle('active', t === tab);
@@ -1013,6 +1046,8 @@ function fullText(doc) { return parsedPages(doc).map(p=>p.text).join(' '); }
 // ══════════════════════════════════════════════════════════
 
 function normalize(s) { return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+const STOPWORDS = new Set(['de','la','el','en','y','a','que','los','las','del','se','un','una','por','con','no','al','le','su','es','lo','como','más','pero','sus','me','si','sin','sobre','también','entre','cuando','muy','fue','ha','ser','era','así','hasta','desde','tiene','son','nos','ya','hay','porque','todo','esta','este','para','bien','ese','eso','ante','bajo','cabe','con','contra','donde','durante','hacia','mediante','salvo','según','tras','versus','via','pro','cui','qui','quae','quod','est','et','in','ad','ut','non','sed','quia','vel','per','cum','ex','ab','te','tu','yo','él','mi','ti','nos','eso','ello','sus','les','han','has','hizo','fue','ser','siendo','sido','estar','siendo','cada','todo','todos','todas','tanto','tan','dos','tres','uno','tal','vez','hacer','haber','más','otro','otra','otros','otras','mismo','misma','así','aún','aunque','donde','cuando','como','sino','pues','pues','mas','ahi','aquí','ahí']);
+
 function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function escRx(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
 
@@ -1070,11 +1105,19 @@ function parseQuery(raw) {
 
 function runSearch(raw, maxDist, selected) {
   const query = parseQuery(raw);
+  // Rango §N (solo aplica a docs IVE con párrafos numerados)
+  const rangeFrom = parseInt(document.getElementById('range-from')?.value) || 0;
+  const rangeTo   = parseInt(document.getElementById('range-to')?.value)   || Infinity;
   let totalHits=0, docsWithHits=0;
   const docResults = [];
   for (const doc of selected) {
     const text  = fullText(doc);
-    const pages = parsedPages(doc);
+    let pages = parsedPages(doc);
+    // Aplicar filtro de rango solo si el doc tiene párrafos numerados
+    const hasNums = pages.some(p => p.page > 0);
+    if (hasNums && (rangeFrom > 0 || rangeTo < Infinity)) {
+      pages = pages.filter(p => p.page === 0 || (p.page >= rangeFrom && p.page <= rangeTo));
+    }
     let allSnips = [];
     if      (query.mode==='exact') allSnips = searchExact(text, pages, query.phrase);
     else if (query.mode==='or')    allSnips = searchOR(text, pages, query.groups, maxDist);
@@ -1115,7 +1158,7 @@ function renderResults({ docResults, totalHits, docsWithHits }, searchedCount, r
     <div class="stat-box"><div class="stat-num">${totalHits}</div><div class="stat-lbl">Ocurrencias</div></div>
     <div class="stat-box"><div class="stat-num">${docsWithHits}</div><div class="stat-lbl">Documentos</div></div>
     <div class="stat-box"><div class="stat-num">${searchedCount}</div><div class="stat-lbl">Buscados</div></div>
-    ${totalHits>0?`<button class="export-btn" onclick="exportResults()">⬇ Exportar</button>`:''}
+    ${totalHits>0?`<button class="export-btn" onclick="exportResults()">⬇ TXT</button><button class="export-pdf-btn" onclick="exportPDF()">⬇ PDF</button>`:''}
   </div>`;
 
   if (!totalHits) {
@@ -1358,6 +1401,40 @@ function highlightFuzzy(html, normTerm, isWild) {
   return html.replace(re2, m => normalize(m).startsWith(base) ? '<mark>'+m+'</mark>' : m);
 }
 
+
+// ══════════════════════════════════════════════════════════
+//  TÉRMINOS FRECUENTES
+// ══════════════════════════════════════════════════════════
+function buildFreqCloud(col) {
+  const source = col === 'buela' ? docsB : (col === 'all' ? [...docs, ...docsB] : docs);
+  const loaded = source.filter(d => d && d.text);
+  if (!loaded.length) return;
+  const freq = {};
+  for (const doc of loaded) {
+    const pages = parsedPages(doc);
+    const words = pages.map(p => p.text).join(' ')
+      .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .split(/[^a-záéíóúüñ]+/)
+      .filter(w => w.length >= 5 && !STOPWORDS.has(w));
+    for (const w of words) freq[w] = (freq[w] || 0) + 1;
+  }
+  const top = Object.entries(freq)
+    .filter(([w, n]) => n >= 3)
+    .sort((a,b) => b[1]-a[1])
+    .slice(0, 80);
+  const cloud = document.getElementById('freq-cloud');
+  if (!top.length) { cloud.innerHTML = '<em style="font-size:11px;color:var(--ink-light)">Sin datos</em>'; return; }
+  const maxN = top[0][1], minN = top[top.length-1][1];
+  cloud.innerHTML = top.map(([w,n]) => {
+    const size = 10 + Math.round((n - minN) / Math.max(maxN - minN, 1) * 6);
+    return `<span class="freq-tag" style="font-size:${size}px" onclick="setSearchTerm('${w}')" title="${n} ocurrencias">${w}<span class="freq-n">${n}</span></span>`;
+  }).join('');
+}
+
+function setSearchTerm(w) {
+  document.getElementById('search-input').value = w;
+  document.getElementById('search-input').focus();
+}
 // ══════════════════════════════════════════════════════════
 //  EXPORTAR
 // ══════════════════════════════════════════════════════════
@@ -1393,6 +1470,62 @@ function exportResults() {
   a.download = `IVE-${lastRaw.replace(/[^a-z0-9]/gi,'_').slice(0,30)}.txt`;
   a.click();
   URL.revokeObjectURL(a.href);
+}
+
+// ── Exportar a PDF ──────────────────────────────────────
+function exportPDF() {
+  if (!lastResults) return;
+
+  // Recopilar filas de resultados
+  const rows = [];
+  const addSection = (label, results) => {
+    if (!results || !results.totalHits) return;
+    rows.push({ type: 'section', text: label + ' — ' + results.totalHits + ' ocurrencias en ' + results.docsWithHits + ' documentos' });
+    for (const r of results.docResults) {
+      if (!r.count) continue;
+      rows.push({ type: 'doc', text: r.name + ' (' + r.count + ')' });
+      const snips = snippetsMap[r.name] || [];
+      for (const s of snips) {
+        rows.push({ type: 'snip', text: s.replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim() });
+      }
+    }
+  };
+
+  if (lastResults.mode === 'all') {
+    addSection('Documentos IVE', lastResults.iveRes);
+    addSection('Escritos P. Buela', lastResults.buelaRes);
+  } else {
+    const label = lastResults.mode==='ive' ? 'Documentos IVE' : 'Escritos P. Buela';
+    addSection(label, lastResults.results);
+  }
+
+  // Construir HTML para imprimir
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>IVE – ${escHtml(lastRaw)}</title>
+<style>
+  body { font-family: Georgia, serif; font-size: 12px; color: #1a1a2a; padding: 32px 48px; max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 18px; color: #2d0a14; border-bottom: 2px solid #8b1a2c; padding-bottom: 8px; }
+  h2 { font-size: 13px; color: #1a2744; margin-top: 24px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+  h3 { font-size: 12px; color: #8b1a2c; margin: 14px 0 4px; font-style: italic; }
+  p.snip { margin: 0 0 8px; padding: 6px 10px; background: #faf9f4; border-left: 3px solid #c9a227; font-size: 11.5px; line-height: 1.6; }
+  .date { font-size: 10px; color: #888; margin-top: 4px; }
+  @media print { body { padding: 20px; } }
+</style></head><body>
+<h1>Buscador IVE — "${escHtml(lastRaw)}"</h1>
+<div class="date">Exportado el ${new Date().toLocaleDateString('es-AR', {day:'2-digit',month:'long',year:'numeric'})}</div>
+${rows.map(r => {
+  if (r.type==='section') return `<h2>${escHtml(r.text)}</h2>`;
+  if (r.type==='doc')     return `<h3>◆ ${escHtml(r.text)}</h3>`;
+  return `<p class="snip">${escHtml(r.text)}</p>`;
+}).join('\n')}
+</body></html>`;
+
+  const win = window.open('', '_blank');
+  if (!win) { alert('Permitir ventanas emergentes para exportar PDF'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { win.print(); }, 400);
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1677,7 +1810,7 @@ function clearResults() {
 // ══════════════════════════════════════════════════════════
 //  INICIO
 // ══════════════════════════════════════════════════════════
-// Inicializar búsquedas recientes
+// Inicializar búsquedas recientes — buildFreqCloud se llama desde switchTab
 function updateRecentsList(recents) {
   const dl = document.getElementById('search-recent');
   if (!dl) return;
@@ -1690,6 +1823,8 @@ try {
 
 loadAllDocs();
 loadAllDocsB();
+// Construir nube inicial (tab IVE por defecto) cuando todo cargue
+setTimeout(() => buildFreqCloud('ive'), 3000);
 </script>
 </body>
 </html>
