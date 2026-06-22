@@ -958,7 +958,8 @@ async function fetchTXT(url) {
         const mTit = bloqueTrim.match(/^§TÍTULO§\s*(.+?)(?:\n|$)([\s\S]*)/);
         if (mTit) {
           const titulo = mTit[1].trim();
-          const resto = mTit[2];
+          // Cortar notas al pie: todo lo que viene después de __________________ (≥10 guiones bajos)
+          const resto = mTit[2].split(/_{10,}/)[0];
           // Sub-bloques de texto dentro de esta sección
           const subBloques = resto.split(/\n\n+/);
           for (const sb of subBloques) {
@@ -966,8 +967,9 @@ async function fetchTXT(url) {
             if (t) parrafos.push({ page: 0, text: t, titulo });
           }
         } else {
-          // Texto antes del primer §TÍTULO§ (encabezado del documento, sin título de sección)
-          const subBloques = bloqueTrim.split(/\n\n+/);
+          // Texto antes del primer §TÍTULO§ — también filtrar notas al pie
+          const sinNotas = bloqueTrim.split(/_{10,}/)[0];
+          const subBloques = sinNotas.split(/\n\n+/);
           for (const sb of subBloques) {
             const t = sb.trim();
             if (t) parrafos.push({ page: 0, text: t, titulo: '' });
