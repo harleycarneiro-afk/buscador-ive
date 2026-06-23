@@ -1,0 +1,1830 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buscador de Textos — Instituto del Verbo Encarnado</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+:root {
+  --bg:           #ffffff;
+  --bg-soft:      #f9f6f2;
+  --bg-mid:       #f0eae0;
+  --bg-dark:      #e2d8cc;
+  --navy:         #1a0a08;
+  --navy-mid:     #2a1008;
+  --navy-light:   #3d1a10;
+  --burgundy:     #c8102e;
+  --burgundy-h:   #a00d24;
+  --gold:         #c8960a;
+  --gold-light:   #d4a820;
+  --gold-pale:    #fdf3d0;
+  --ink:          #1a1a1a;
+  --ink-mid:      #3a3028;
+  --ink-light:    #7a6858;
+  --border:       #d4c4a8;
+  --border-light: #ede4d4;
+  --hl-bg:        #fce97a;
+  --hl-txt:       #2a1400;
+  --err:          #c09090;
+  --white:        #ffffff;
+  --sidebar-w:    280px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Source Serif 4', Georgia, serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+/* ═══ HEADER ═══ */
+header {
+  background: var(--navy);
+  border-bottom: 3px solid var(--gold);
+  position: relative;
+}
+.header-top-stripe { height: 4px; background: var(--burgundy); }
+.header-inner {
+  display: flex; align-items: center; gap: 24px;
+  padding: 20px 40px 18px; max-width: 1400px; margin: 0 auto;
+}
+.crest-wrap {
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  width: 72px; height: 72px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(184,144,58,0.35);
+  border-radius: 50%;
+}
+.crest-img { height: 56px; width: auto; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4)); }
+.header-divider { width: 1px; height: 50px; background: rgba(184,144,58,0.3); flex-shrink:0; }
+.header-text { flex:1; }
+.header-institute {
+  font-family: 'Playfair Display', serif;
+  font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--gold-light); margin-bottom: 4px; font-weight: 400;
+}
+.header-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px; font-weight: 600; color: #fff;
+  line-height: 1.15; letter-spacing: 0.01em;
+}
+.header-title em { color: var(--gold-light); font-style: normal; }
+.header-sub {
+  font-size: 12px; color: rgba(255,255,255,0.45);
+  font-style: italic; margin-top: 5px; letter-spacing: 0.01em;
+}
+
+/* ═══ TABS ═══ */
+.tabs-bar {
+  background: var(--navy-mid);
+  border-bottom: 2px solid var(--gold);
+}
+.tabs-inner {
+  display: flex; max-width: 1400px; margin: 0 auto;
+  padding: 0 40px; gap: 0; align-items: stretch;
+}
+.tab-btn {
+  font-family: 'Playfair Display', serif;
+  font-size: 13.5px; letter-spacing: 0.05em;
+  color: rgba(255,255,255,0.5);
+  background: none; border: none;
+  border-bottom: 3px solid transparent;
+  padding: 12px 24px 11px;
+  cursor: pointer; transition: color 0.2s, border-color 0.2s;
+  margin-bottom: -2px; white-space: nowrap;
+}
+.tab-btn:hover { color: var(--gold-light); }
+.tab-btn.active { color: var(--gold-light); border-bottom-color: var(--gold); }
+.tab-btn.tab-all { color: rgba(255,255,255,0.45); }
+.tab-btn.tab-all.active { color: #fff; border-bottom-color: var(--burgundy); }
+
+/* ═══ LAYOUT ═══ */
+.layout {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  min-height: calc(100vh - 130px);
+  max-width: 1400px; margin: 0 auto;
+}
+
+/* ═══ SIDEBAR ═══ */
+.sidebar {
+  background: var(--navy);
+  border-right: 1px solid rgba(184,144,58,0.2);
+  display: flex; flex-direction: column;
+  position: sticky; top: 0; height: calc(100vh - 130px);
+  overflow: hidden;
+}
+.sb-section {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(184,144,58,0.15);
+  flex-shrink: 0;
+}
+.sb-section.sb-doclist {
+  flex: 1; overflow: hidden; display: flex; flex-direction: column;
+  border-bottom: none;
+}
+.sb-label {
+  font-family: 'Playfair Display', serif;
+  font-size: 9.5px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--gold-light); margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.sb-label::after { content:''; flex:1; height:1px; background: rgba(184,144,58,0.25); }
+
+.load-status { font-size: 12px; color: rgba(255,255,255,0.5); font-style: italic; }
+.load-detail { font-size: 11px; color: rgba(255,255,255,0.3); font-style: italic; margin-top: 2px; min-height: 14px; }
+.prog-wrap { background: rgba(0,0,0,0.4); border-radius: 2px; height: 3px; margin-top: 8px; overflow: hidden; }
+.prog-fill { height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-light)); transition: width 0.3s; width: 0%; }
+
+.sel-row { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; padding: 0 3px; }
+.sel-row label { font-size: 11.5px; color: rgba(255,255,255,0.6); cursor: pointer; }
+.sel-row input { accent-color: var(--gold); cursor: pointer; }
+.doc-count { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.3); }
+
+.doc-list { overflow-y: auto; flex: 1; padding-bottom: 8px; }
+.doc-list::-webkit-scrollbar { width: 4px; }
+.doc-list::-webkit-scrollbar-track { background: transparent; }
+.doc-list::-webkit-scrollbar-thumb { background: rgba(184,144,58,0.3); border-radius: 2px; }
+
+.doc-group-label {
+  font-family: 'Playfair Display', serif; font-size: 9px;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--gold); opacity: 0.6;
+  padding: 10px 6px 3px; margin-top: 2px;
+}
+.doc-item {
+  display: flex; align-items: center; gap: 7px;
+  padding: 4px 5px; border-radius: 2px; transition: background 0.15s;
+}
+.doc-item:hover { background: var(--navy-light); }
+.doc-item input { accent-color: var(--gold); cursor: pointer; flex-shrink: 0; }
+.doc-item label {
+  flex: 1; cursor: pointer; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+  color: rgba(255,255,255,0.65); font-size: 12.5px;
+  font-family: 'Source Serif 4', serif; transition: color 0.15s;
+}
+.doc-item:hover label { color: #fff; }
+.doc-item.loading-doc label { color: rgba(255,255,255,0.3); font-style: italic; }
+.doc-item.error-doc label { color: var(--err); }
+.doc-item .err-icon { font-size: 11px; color: var(--err); display: none; flex-shrink:0; }
+.doc-item.error-doc .err-icon { display: inline; }
+.hit-badge {
+  font-family: 'JetBrains Mono', monospace; font-size: 9px;
+  background: var(--burgundy); color: #fff;
+  padding: 1px 6px; border-radius: 8px; flex-shrink: 0; display: none;
+}
+
+
+
+/* ═══ MAIN ═══ */
+.main-content { display: flex; flex-direction: column; background: var(--bg); }
+
+/* ═══ SEARCH PANEL ═══ */
+.search-panel {
+  background: var(--bg-soft);
+  border-bottom: 1px solid var(--border-light);
+  padding: 20px 32px 16px;
+}
+.search-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.search-input-wrap { flex: 1; min-width: 200px; }
+.search-input-wrap label { display: block; font-size: 11px; color: var(--ink-light); margin-bottom: 5px; font-style: italic; letter-spacing: 0.03em; }
+#search-input {
+  width: 100%; font-family: 'Source Serif 4', serif; font-size: 18px;
+  padding: 9px 14px; border: 1.5px solid var(--border);
+  border-radius: 2px; background: var(--white); color: var(--ink);
+  outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+}
+#search-input:focus { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(26,39,68,0.08); }
+#search-input::placeholder { color: var(--ink-light); font-style: italic; }
+
+.distance-wrap { min-width: 110px; }
+.distance-wrap label { display: block; font-size: 11px; color: var(--ink-light); margin-bottom: 5px; font-style: italic; }
+#distance-input {
+  width: 100%; font-family: 'JetBrains Mono', monospace; font-size: 15px;
+  padding: 9px 10px; border: 1.5px solid var(--border);
+  border-radius: 2px; background: var(--white); color: var(--ink);
+  outline: none; transition: border-color 0.2s;
+}
+#distance-input:focus { border-color: var(--navy); }
+
+.search-btn {
+  font-family: 'Playfair Display', serif; font-size: 16px;
+  padding: 10px 30px; background: var(--navy); color: #fff;
+  border: none; border-radius: 2px; cursor: pointer;
+  transition: background 0.2s; white-space: nowrap;
+  min-width: 110px; letter-spacing: 0.03em;
+}
+.search-btn:hover:not(:disabled) { background: var(--burgundy); }
+.search-btn:disabled { background: #aaa; cursor: default; }
+.search-btn.searching { background: var(--gold); color: var(--navy); }
+
+.search-hints {
+  margin-top: 10px; font-size: 11.5px; color: var(--ink-light);
+  font-style: italic; display: flex; gap: 14px; flex-wrap: wrap;
+}
+.search-hints code {
+  font-family: 'JetBrains Mono', monospace; font-style: normal;
+  background: var(--gold-pale); padding: 1px 5px; border-radius: 2px;
+  font-size: 10.5px; color: var(--navy); border: 1px solid var(--border-light);
+}
+
+/* ═══ SCOPE BADGE ═══ */
+.scope-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-style: italic; color: var(--ink-light);
+  margin-top: 8px;
+}
+.scope-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+}
+.scope-dot.ive { background: var(--navy); }
+.scope-dot.buela { background: var(--burgundy); }
+.scope-dot.all { background: var(--gold); }
+
+/* ═══ RESULTS ═══ */
+.results-area { padding: 24px 32px; overflow-y: auto; flex: 1; }
+
+.results-summary {
+  display: flex; gap: 10px; margin-bottom: 22px;
+  flex-wrap: wrap; align-items: center;
+}
+.stat-box {
+  background: var(--white); border: 1px solid var(--border-light);
+  border-top: 3px solid var(--burgundy); border-radius: 2px;
+  padding: 10px 18px; text-align: center; min-width: 96px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.stat-num { font-family: 'Playfair Display', serif; font-size: 28px; color: var(--navy); line-height: 1; }
+.stat-lbl { font-size: 10px; color: var(--ink-light); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 3px; }
+
+.export-btn {
+  font-family: 'Source Serif 4', serif; font-size: 13px;
+  padding: 7px 16px; background: transparent;
+  color: var(--navy); border: 1.5px solid var(--navy);
+  border-radius: 2px; cursor: pointer; transition: all 0.2s;
+  white-space: nowrap; margin-left: auto;
+}
+.export-btn:hover { background: var(--navy); color: #fff; }
+
+/* ═══ SECTION HEADER (modo "todo") ═══ */
+.section-header {
+  display: flex; align-items: center; gap: 10px;
+  margin: 20px 0 10px; padding-bottom: 8px;
+  border-bottom: 2px solid var(--border-light);
+}
+.section-header:first-child { margin-top: 0; }
+.section-header-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink:0; }
+.section-header-dot.ive { background: var(--navy); }
+.section-header-dot.buela { background: var(--burgundy); }
+.section-header-title {
+  font-family: 'Playfair Display', serif; font-size: 14px;
+  color: var(--ink-mid); letter-spacing: 0.04em;
+}
+.section-header-count {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  color: var(--ink-light); margin-left: auto;
+}
+
+/* ═══ RESULT CARDS ═══ */
+.result-doc {
+  background: var(--white); border: 1px solid var(--border-light);
+  border-left: 4px solid var(--burgundy); border-radius: 2px;
+  margin-bottom: 12px; overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  transition: box-shadow 0.15s;
+}
+.result-doc:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.09); }
+.result-doc.ive-doc { border-left-color: var(--navy); }
+.result-doc.buela-doc { border-left-color: var(--burgundy); }
+
+.result-doc-header {
+  background: var(--bg-soft); border-bottom: 1px solid var(--border-light);
+  padding: 10px 16px; display: flex; align-items: center;
+  justify-content: space-between; gap: 10px;
+  cursor: pointer; user-select: none; transition: background 0.15s;
+}
+.result-doc-header:hover { background: var(--gold-pale); }
+.result-doc-name {
+  font-family: 'Playfair Display', serif; font-size: 15.5px;
+  color: var(--navy); flex: 1;
+}
+.result-doc-collection {
+  font-size: 10px; font-style: italic; color: var(--ink-light);
+  background: var(--bg-mid); border-radius: 10px; padding: 1px 8px;
+  flex-shrink: 0; border: 1px solid var(--border-light);
+}
+.result-doc-badge {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  background: var(--burgundy); color: #fff;
+  padding: 2px 9px; border-radius: 10px; flex-shrink: 0;
+}
+.ive-doc .result-doc-badge { background: var(--navy); }
+.result-doc-actions { display: flex; align-items: center; gap: 7px; }
+.result-doc-toggle { font-size: 13px; color: var(--ink-light); transition: transform 0.2s; }
+.collapsed .result-snippets { display: none; }
+.collapsed .result-doc-toggle { transform: rotate(-90deg); }
+
+/* ═══ SNIPPETS ═══ */
+.result-snippets { padding: 0; }
+.snippet {
+  padding: 10px 18px 12px; border-bottom: 1px solid var(--border-light);
+  font-size: 14.5px; line-height: 1.9; color: var(--ink-mid);
+}
+.snippet:last-child { border-bottom: none; }
+.snippet mark {
+  background: var(--hl-bg); color: var(--hl-txt);
+  border-radius: 2px; padding: 0 2px; font-style: italic;
+}
+.snippet-meta {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  color: var(--ink-light); margin-bottom: 4px;
+}
+
+.snippet {
+  cursor: pointer;
+}
+.snippet:hover {
+  background: var(--gold-pale);
+}
+.snippet-show-more {
+  padding: 9px 18px; font-size: 12.5px; color: var(--navy);
+  font-style: italic; background: var(--gold-pale);
+  border-top: 1px solid var(--border-light);
+  cursor: pointer; text-align: center; transition: background 0.15s; user-select: none;
+}
+.snippet-show-more:hover { background: var(--bg-dark); color: var(--burgundy); }
+.snippet-show-more.loading { color: var(--ink-light); cursor: default; }
+
+.view-full-btn {
+  font-family: 'Source Serif 4', serif; font-size: 11.5px; padding: 2px 9px;
+  background: transparent; color: var(--navy); border: 1px solid rgba(26,39,68,0.3);
+  border-radius: 2px; cursor: pointer; white-space: nowrap;
+  transition: all 0.15s; line-height: 1.6;
+}
+.view-full-btn:hover { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+/* ═══ EMPTY / NO RESULTS ═══ */
+.empty-state { text-align: center; padding: 64px 20px; }
+.empty-icon { font-family: 'Playfair Display', serif; font-size: 48px; color: var(--bg-dark); line-height: 1; margin-bottom: 16px; }
+.empty-state p { font-size: 15px; font-style: italic; color: var(--ink-light); }
+.no-results { text-align: center; padding: 40px; color: var(--ink-light); font-style: italic; font-size: 15px; }
+
+/* ═══ MODAL ═══ */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(10,16,32,0.75); z-index: 1000;
+  align-items: center; justify-content: center; padding: 24px;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--bg); border: 1px solid var(--border);
+  border-top: 4px solid var(--burgundy); border-radius: 2px;
+  width: 100%; max-width: 840px; max-height: 88vh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 16px 60px rgba(10,16,32,0.4);
+}
+.modal-header {
+  background: var(--navy); color: #fff; padding: 13px 20px;
+  display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+}
+.modal-title { font-family: 'Playfair Display', serif; font-size: 16px; flex: 1; color: #fff; }
+.modal-close {
+  background: none; border: none; color: #fff; font-size: 20px;
+  cursor: pointer; opacity: 0.5; padding: 0 4px; transition: opacity 0.15s;
+}
+.modal-close:hover { opacity: 1; }
+.modal-toolbar {
+  background: var(--bg-soft); border-bottom: 1px solid var(--border-light);
+  padding: 10px 18px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap;
+}
+.modal-search {
+  font-family: 'Source Serif 4', serif; font-size: 14px;
+  padding: 5px 10px; border: 1.5px solid var(--border); border-radius: 2px;
+  background: var(--white); color: var(--ink); outline: none; flex: 1; min-width: 120px;
+  transition: border-color 0.2s;
+}
+.modal-search:focus { border-color: var(--navy); }
+.modal-nav-btn {
+  font-family: 'JetBrains Mono', monospace; font-size: 11.5px;
+  padding: 5px 10px; background: var(--white); border: 1px solid var(--border);
+  border-radius: 2px; cursor: pointer; color: var(--ink-mid); white-space: nowrap;
+  transition: background 0.15s;
+}
+.modal-nav-btn:hover { background: var(--navy); color: #fff; border-color: var(--navy); }
+.modal-hit-count { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-light); white-space: nowrap; }
+.cite-num { color: var(--gold); opacity: 0.7; font-size: 0.82em; vertical-align: super; font-family: 'JetBrains Mono', monospace; letter-spacing: -0.02em; }
+/* ── Términos frecuentes ── */
+.freq-panel { margin-top: 16px; border-top: 1px solid var(--border-light); padding-top: 14px; }
+.freq-panel summary { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-light); cursor: pointer; user-select: none; padding: 4px 0; }
+.freq-panel summary:hover { color: var(--navy); }
+.freq-cloud { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; max-height: 260px; overflow-y: auto; padding-right: 4px; }
+.freq-tag { font-size: 11px; padding: 3px 8px; border-radius: 12px; background: var(--bg-card); border: 1px solid var(--border-light); color: var(--ink-mid); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.freq-tag:hover { background: var(--navy); color: #fff; border-color: var(--navy); }
+.freq-tag .freq-n { font-family: 'JetBrains Mono',monospace; font-size: 9px; color: var(--gold); margin-left: 3px; }
+/* ── Rango §N ── */
+.range-wrap { display: flex; gap: 6px; align-items: flex-end; }
+.range-wrap label { display: block; font-size: 11px; color: var(--ink-light); margin-bottom: 5px; font-style: italic; }
+.range-wrap input[type=number] { width: 64px; padding: 8px 10px; border: 1px solid var(--border-light); border-radius: 6px; font-size: 13px; background: var(--bg-card); color: var(--ink-dark); }
+.range-wrap input[type=number]:focus { border-color: var(--navy); outline: none; }
+/* ── Export PDF btn ── */
+.export-pdf-btn { padding: 7px 14px; background: var(--burgundy); color: #fff; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; font-family: inherit; margin-left: 6px; }
+.export-pdf-btn:hover { background: var(--navy); }
+#search-recent { font-size: 12px; }
+.modal-body {
+  overflow-y: hidden; padding: 0; flex: 1;
+  font-size: 14.5px; line-height: 2; color: var(--ink-mid);
+  word-break: break-word;
+}
+.modal-body mark { background: var(--hl-bg); color: var(--hl-txt); border-radius: 2px; padding: 0 2px; }
+.modal-body mark.current { background: var(--burgundy); color: #fff; }
+
+/* ═══ RESPONSIVE ═══ */
+@media (max-width: 960px) {
+  :root { --sidebar-w: 240px; }
+  .header-inner { padding: 16px 24px; }
+  .tabs-inner { padding: 0 24px; }
+  .search-panel, .results-area { padding: 16px 20px; }
+}
+@media (max-width: 700px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { position: static; height: auto; max-height: 260px; border-right: none; border-bottom: 1px solid rgba(184,144,58,0.2); }
+  .tabs-inner { padding: 0 16px; }
+  .header-inner { padding: 14px 16px; gap: 14px; }
+  .crest-wrap { width: 54px; height: 54px; }
+  .crest-img { height: 42px; }
+  .header-title { font-size: 18px; }
+}
+@media (max-width: 480px) {
+  .header-title { font-size: 16px; }
+  .stat-box { min-width: 76px; padding: 8px 10px; }
+  .stat-num { font-size: 22px; }
+  .tab-btn { font-size: 12px; padding: 10px 12px; }
+  .search-btn { padding: 9px 18px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top-stripe"></div>
+  <div class="header-inner">
+    <div class="crest-wrap">
+      <img class="crest-img" src="escudo.png" alt="Escudo IVE" onerror="this.style.display='none'">
+    </div>
+    <div class="header-divider"></div>
+    <div class="header-text">
+      <div class="header-institute">Instituto del Verbo Encarnado</div>
+      <div class="header-title">Buscador de <em>Textos</em></div>
+      <div class="header-sub">Directorios y documentos del IVE · Escritos del P. Buela · Sin distinción de acentos ni mayúsculas</div>
+    </div>
+  </div>
+</header>
+
+<div class="tabs-bar">
+  <div class="tabs-inner">
+    <button class="tab-btn active" id="tab-ive"   onclick="switchTab('ive')">Documentos IVE</button>
+    <button class="tab-btn"        id="tab-buela" onclick="switchTab('buela')">Escritos P. Buela</button>
+    <button class="tab-btn tab-all" id="tab-all"  onclick="switchTab('all')">Buscar en todo</button>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- ═══ SIDEBAR ═══ -->
+  <aside class="sidebar">
+
+    <!-- Estado IVE -->
+    <div class="sb-section" id="sb-st-ive">
+      <div class="sb-label">Estado · IVE</div>
+      <div class="load-status" id="load-st-ive">Cargando...</div>
+      <div class="load-detail" id="load-det-ive"></div>
+      <div class="prog-wrap"><div class="prog-fill" id="prog-ive"></div></div>
+    </div>
+    <!-- Estado Buela -->
+    <div class="sb-section" id="sb-st-buela" style="display:none">
+      <div class="sb-label">Estado · P. Buela</div>
+      <div class="load-status" id="load-st-buela">Cargando...</div>
+      <div class="load-detail" id="load-det-buela"></div>
+      <div class="prog-wrap"><div class="prog-fill" id="prog-buela"></div></div>
+    </div>
+    <!-- Estado Todo -->
+    <div class="sb-section" id="sb-st-all" style="display:none">
+      <div class="sb-label">Estado · Todo</div>
+      <div class="load-status" id="load-st-all">Cargando ambas colecciones...</div>
+      <div class="prog-wrap"><div class="prog-fill" id="prog-all"></div></div>
+    </div>
+    <!-- Lista IVE -->
+    <div class="sb-section sb-doclist" id="sb-docs-ive">
+      <div class="sb-label">Documentos IVE</div>
+      <div class="sel-row">
+        <input type="checkbox" id="sel-all-ive" checked onchange="toggleAll('ive', this.checked)">
+        <label for="sel-all-ive">Todos</label>
+        <span class="doc-count" id="cnt-ive">0</span>
+      </div>
+      <div class="doc-list" id="doc-list-ive"></div>
+    </div>
+
+    <!-- Lista Buela -->
+    <div class="sb-section sb-doclist" id="sb-docs-buela" style="display:none">
+      <div class="sb-label">Escritos P. Buela</div>
+      <div class="sel-row">
+        <input type="checkbox" id="sel-all-buela" checked onchange="toggleAll('buela', this.checked)">
+        <label for="sel-all-buela">Todos</label>
+        <span class="doc-count" id="cnt-buela">0</span>
+      </div>
+      <div class="doc-list" id="doc-list-buela"></div>
+    </div>
+
+    <!-- Lista Todo (ambas) -->
+    <div class="sb-section sb-doclist" id="sb-docs-all" style="display:none">
+      <div class="sb-label">Todas las colecciones</div>
+      <div class="sel-row">
+        <input type="checkbox" id="sel-all-all" checked onchange="toggleAll('all', this.checked)">
+        <label for="sel-all-all">Todos</label>
+      </div>
+      <div class="doc-list" id="doc-list-all"></div>
+    </div>
+
+    <!-- Términos frecuentes -->
+    <div class="sb-section freq-panel" id="sb-freq">
+      <details>
+        <summary>✦ Términos frecuentes</summary>
+        <div class="freq-cloud" id="freq-cloud"><em style="font-size:11px;color:var(--ink-light)">Disponible tras cargar los documentos</em></div>
+      </details>
+    </div>
+  </aside>
+
+  <!-- ═══ MAIN ═══ -->
+  <div class="main-content">
+    <div class="search-panel">
+      <div class="search-row">
+        <div class="search-input-wrap">
+          <label>Término(s) a buscar</label>
+          <input type="text" id="search-input"
+            placeholder='eucarist*   ·   "vida eucarística"   ·   gracia misión'
+            list="search-recent"
+            onkeydown="if(event.key==='Enter') doSearch()" oninput="if(!this.value.trim()) clearResults()">
+          <datalist id="search-recent"></datalist>
+        </div>
+        <div class="distance-wrap">
+          <label>Distancia máx.</label>
+          <input type="number" id="distance-input" value="10" min="1" max="500">
+        </div>
+        <button class="search-btn" id="search-btn" onclick="doSearch()" disabled>Buscar</button>
+      </div>
+      <div class="search-row" style="margin-top:8px;gap:8px;align-items:flex-end;">
+        <div class="range-wrap">
+          <div><label>§ Desde (IVE)</label><input type="number" id="range-from" placeholder="1" min="1"></div>
+          <div><label>§ Hasta</label><input type="number" id="range-to" placeholder="fin" min="1"></div>
+        </div>
+        <div style="flex:1"></div>
+      </div>
+      <div class="search-hints">
+        <span><code>eucarist*</code> familia de palabras</span>
+        <span><code>"frase exacta"</code> entre comillas</span>
+        <span><code>gracia misión</code> palabras cercanas</span>
+        <span><code>gracia OR esperanza</code> una u otra</span>
+        <span style="color:var(--gold)">§ Desde/Hasta filtra por párrafo en IVE</span>
+      </div>
+    </div>
+
+    <div class="results-area" id="results-area">
+      <div class="empty-state">
+        <div class="empty-icon">✦</div>
+        <p id="empty-msg">Cargando documentos, por favor espera…</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL ═══ -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalOnOverlay(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-title"></span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-toolbar">
+      <input class="modal-search" id="modal-search-input"
+        placeholder="Buscar en este documento…"
+        oninput="modalSearch()" onkeydown="modalSearchNav(event)">
+      <button class="modal-nav-btn" onclick="modalNav(-1)">◂ Ant.</button>
+      <button class="modal-nav-btn" onclick="modalNav(1)">Sig. ▸</button>
+      <span class="modal-hit-count" id="modal-hit-count"></span>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ══════════════════════════════════════════════════════════
+//  DATOS
+// ══════════════════════════════════════════════════════════
+
+const PDF_FILES = [
+  "ConstitucionesDir-Espiritualidad.pdf","Direccion-Espiritual-TEXT.pdf","Ecumenismo-TEXT.pdf",
+  "Ejercicios-Espirituales-Completo.pdf","Evangelizacion-de-la-cultura-TEXT.pdf",
+  "Formacion-intelectual-TEXT.pdf","Gobierno-TEXT.pdf","Hermanos-religiosos.pdf",
+  "Mision-Ad-Gentes-TEXT.pdf","Misiones-populares-TEXT.pdf","Noviciados-TEXT.pdf",
+  "Obras-de-misericordia-TEXT.pdf","Oratorio-TEXT.pdf","Parroquias-TEXT.pdf",
+  "Predicacion-de-la-Palabra-de-Dios-TEXT.pdf","Rama-oriental-TEXT.pdf",
+  "Seminarios-Mayores-TEXT.pdf","Seminarios-menores-TEXT.pdf","Tercera-orden-TEXT.pdf",
+  "Vida-consagrada-TEXT.pdf","Vida-contemplativa-TEXT.pdf","Vida-fraterna-TEXT.pdf",
+  "Vida-liturgica-TEXT.pdf","Vocaciones-TEXT.pdf"
+];
+
+const BUELA_REVISTAS = [
+  { name:"Ave María.txt",    label:"Ave María",   url:"buela/textos/revistas/Ave María.txt" },
+  { name:"Annuntiavit.txt",  label:"Annuntiavit", url:"buela/textos/revistas/Annuntiavit.txt" },
+  { name:"Diálogo.txt",      label:"Diálogo",     url:"buela/textos/revistas/Diálogo.txt" },
+  { name:"Vox Verbi.txt",    label:"Vox Verbi",   url:"buela/textos/revistas/Vox Verbi.txt" }
+];
+
+const BUELA_LIBROS_FILES = [
+  "Ars participandi.txt",
+  "Ejercicios Espirituales y Nueva Evangelizacion.txt",
+  "El Arte del Padre.txt","EL CATECISMO DE LOS JÓVENES.txt",
+  "El Señor es mi Pastor.txt","FÁTIMA.txt","JUAN PABLO MAGNO.txt",
+  "JÓVENES EN EL TERCER MILENIO.txt","MARÍA DE LUJÁN.txt","Mi Parroquia.txt",
+  "Modernos Ataques contra la Familia & El Noviazgo Católico.txt",
+  "Nuestra Misa.txt","Padre Julio Meinvielle.txt",
+  "Pan De Vida Eterna Y Caliz De Eterna Salvaciòn.txt",
+  "Sacerdotes Para Siempre.txt","Servidoras I.txt","Servidoras II.txt",
+  "Servidoras III.txt","Servidoras IV.txt","Servidoras V.txt",
+  "Un pequeño «gran documento».txt"
+];
+
+const BUELA_ALL_DEFS = [
+  ...BUELA_REVISTAS.map(r => ({ ...r, group:'Revistas' })),
+  ...BUELA_LIBROS_FILES.map(n => ({
+    name: n, label: n.replace(/\.txt$/i,''),
+    url: 'buela/textos/libros/' + n, group:'Libros'
+  }))
+];
+
+// ══════════════════════════════════════════════════════════
+//  ESTADO GLOBAL
+// ══════════════════════════════════════════════════════════
+
+const CACHE_VER = 'ive-v11';
+const docs  = [];   // IVE
+const docsB = [];   // Buela
+let currentTab   = 'ive';
+let resultCtr    = 0;
+let lastRaw      = '';
+let lastResults  = null;
+
+
+// Paginación: cuántos snippets mostrar por documento inicialmente
+const SNIP_PAGE = 5;
+// snippetsMap: docName → allSnippets[] (para paginación)
+const snippetsMap = {};
+
+
+
+
+// ══════════════════════════════════════════════════════════
+//  TABS
+// ══════════════════════════════════════════════════════════
+
+function switchTab(tab) {
+  // Construir nube de términos para la pestaña activa
+  setTimeout(() => buildFreqCloud(tab), 100);
+  currentTab = tab;
+  ['ive','buela','all'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('active', t === tab);
+    const stEl = document.getElementById('sb-st-'+t);
+    const dlEl = document.getElementById('sb-docs-'+t);
+    if (stEl) stEl.style.display = (t === tab) ? '' : 'none';
+    if (dlEl) dlEl.style.display = (t === tab) ? '' : 'none';
+  });
+
+  // En modo "all" sincronizar la barra de progreso
+  if (tab === 'all') syncAllProgress();
+
+  const anyLoaded = getActiveDocs().some(d => d && d.text);
+  document.getElementById('search-btn').disabled = !anyLoaded;
+
+  document.getElementById('results-area').innerHTML =
+    `<div class="empty-state"><div class="empty-icon">✦</div><p>Escribe un término y presiona Buscar</p></div>`;
+  lastResults = null;
+}
+
+function getActiveDocs() {
+  if (currentTab === 'ive')   return docs;
+  if (currentTab === 'buela') return docsB;
+  return [...docs, ...docsB];
+}
+
+function syncAllProgress() {
+  const allD  = [...docs, ...docsB];
+  const total = allD.length;
+  const done  = allD.filter(d => d && (d.text || d.error)).length;
+  document.getElementById('prog-all').style.width =
+    total ? Math.round((done/total)*100)+'%' : '0%';
+  document.getElementById('load-st-all').textContent =
+    done === total ? `${allD.filter(d=>d&&d.text).length} documentos cargados`
+                   : `${done}/${total} cargados…`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  IndexedDB
+// ══════════════════════════════════════════════════════════
+
+function openDB() {
+  return new Promise((res,rej) => {
+    const req = indexedDB.open('ive-cache', 4);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('texts')) db.createObjectStore('texts');
+    };
+    req.onsuccess = e => res(e.target.result);
+    req.onerror   = e => rej(e.target.error);
+  });
+}
+async function cacheGet(db, key) {
+  return new Promise(res => {
+    const req = db.transaction('texts','readonly').objectStore('texts').get(key);
+    req.onsuccess = e => res(e.target.result);
+    req.onerror   = () => res(null);
+  });
+}
+async function cachePut(db, key, val) {
+  return new Promise(res => {
+    const tx = db.transaction('texts','readwrite');
+    tx.objectStore('texts').put(val, key);
+    tx.oncomplete = () => res();
+    tx.onerror    = () => res();
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+//  RENDER SIDEBAR DOC LISTS
+// ══════════════════════════════════════════════════════════
+
+function buildIVEList() {
+  const list = document.getElementById('doc-list-ive');
+  list.innerHTML = PDF_FILES.map((name,i) => `
+    <div class="doc-item loading-doc" id="item-ive-${i}">
+      <input type="checkbox" id="doc-ive-${i}" checked
+        onchange="docs[${i}]&&(docs[${i}].selected=this.checked);updateSelAll('ive')">
+      <label for="doc-ive-${i}" title="${escHtml(name)}">${escHtml(name.replace(/\.pdf$/i,'').replace(/-TEXT$/i,'').replace(/-/g,' ').trim())}</label>
+      <span class="err-icon">⚠</span>
+      <span class="hit-badge" id="badge-ive-${i}"></span>
+    </div>`).join('');
+  document.getElementById('cnt-ive').textContent = PDF_FILES.length + ' docs';
+}
+
+function buildBuelaList() {
+  const list = document.getElementById('doc-list-buela');
+  let lastGroup = '', html = '';
+  BUELA_ALL_DEFS.forEach((d,i) => {
+    if (d.group !== lastGroup) {
+      lastGroup = d.group;
+      html += `<div class="doc-group-label">${d.group}</div>`;
+    }
+    html += `<div class="doc-item loading-doc" id="item-buela-${i}">
+      <input type="checkbox" id="doc-buela-${i}" checked
+        onchange="docsB[${i}]&&(docsB[${i}].selected=this.checked);updateSelAll('buela')">
+      <label for="doc-buela-${i}" title="${escHtml(d.label)}">${escHtml(d.label)}</label>
+      <span class="err-icon">⚠</span>
+      <span class="hit-badge" id="badge-buela-${i}"></span>
+    </div>`;
+  });
+  list.innerHTML = html;
+  document.getElementById('cnt-buela').textContent = BUELA_ALL_DEFS.length + ' docs';
+}
+
+function buildAllList() {
+  const list = document.getElementById('doc-list-all');
+  let html = '<div class="doc-group-label">Documentos IVE</div>';
+  PDF_FILES.forEach((name,i) => {
+    html += `<div class="doc-item" id="item-all-ive-${i}">
+      <input type="checkbox" id="doc-all-ive-${i}" checked
+        onchange="docs[${i}]&&(docs[${i}].selected=this.checked)">
+      <label for="doc-all-ive-${i}">${escHtml(name.replace(/\.pdf$/i,'').replace(/-TEXT$/i,'').replace(/-/g,' ').trim())}</label>
+      <span class="hit-badge" id="badge-all-ive-${i}"></span>
+    </div>`;
+  });
+  html += '<div class="doc-group-label">Escritos P. Buela</div>';
+  BUELA_ALL_DEFS.forEach((d,i) => {
+    html += `<div class="doc-item" id="item-all-buela-${i}">
+      <input type="checkbox" id="doc-all-buela-${i}" checked
+        onchange="docsB[${i}]&&(docsB[${i}].selected=this.checked)">
+      <label for="doc-all-buela-${i}">${escHtml(d.label)}</label>
+      <span class="hit-badge" id="badge-all-buela-${i}"></span>
+    </div>`;
+  });
+  list.innerHTML = html;
+}
+
+function toggleAll(collection, checked) {
+  if (collection === 'ive' || collection === 'all') {
+    docs.forEach((d,i) => { if(d&&d.text){d.selected=checked; const cb=document.getElementById('doc-ive-'+i); if(cb) cb.checked=checked; const cb2=document.getElementById('doc-all-ive-'+i); if(cb2) cb2.checked=checked; }});
+  }
+  if (collection === 'buela' || collection === 'all') {
+    docsB.forEach((d,i) => { if(d&&d.text){d.selected=checked; const cb=document.getElementById('doc-buela-'+i); if(cb) cb.checked=checked; const cb2=document.getElementById('doc-all-buela-'+i); if(cb2) cb2.checked=checked; }});
+  }
+}
+function updateSelAll(col) {
+  const arr = col==='ive' ? docs : docsB;
+  const loaded = arr.filter(d=>d&&d.text);
+  const id = 'sel-all-'+col;
+  const cb = document.getElementById(id);
+  if (cb) cb.checked = loaded.length>0 && loaded.every(d=>d.selected);
+}
+
+// ══════════════════════════════════════════════════════════
+//  CARGA IVE
+// ══════════════════════════════════════════════════════════
+
+async function loadAllDocs() {
+  buildIVEList();
+  buildAllList();
+  let db = null;
+  try { db = await openDB(); } catch(e) {}
+  let loaded=0, completed=0;
+  const tasks = PDF_FILES.map(async (name,i) => {
+    const key = CACHE_VER+':pdf:'+name;
+    document.getElementById('load-det-ive').textContent = 'Cargando: ' + name.replace(/\.pdf$/i,'').replace(/-TEXT$/i,'').replace(/-/g,' ').trim();
+    let text = null;
+    if (db) { try { text = await cacheGet(db, key); } catch(e) {} }
+    if (!text) {
+      try {
+        // Cargar desde TXT pre-convertido (sin notas al pie)
+        const txtName = name.replace(/\.pdf$/i, '.txt');
+        text = await fetchTXT('pdfs_txt/' + txtName);
+        if(db&&text) cachePut(db,key,text).catch(()=>{});
+      } catch(e) {
+        // Fallback al PDF original si no existe el TXT
+        try { text = await fetchPDF('pdfs/'+name); if(db&&text) cachePut(db,key,text).catch(()=>{}); }
+        catch(e2) { text = null; }
+      }
+    }
+    docs[i] = { name: name.replace(/\.pdf$/i,'').replace(/-TEXT$/i,'').replace(/-/g,' ').trim(), text: text||'', selected: !!text, collection:'ive' };
+    const item = document.getElementById('item-ive-'+i);
+    if (item) item.classList.replace('loading-doc', text ? 'loaded-doc' : 'error-doc');
+    if (!text) {
+      const cb = document.getElementById('doc-ive-'+i);
+      if(cb){cb.checked=false; cb.disabled=true;}
+      docs[i].error = true;
+    } else { loaded++; }
+    completed++;
+    document.getElementById('prog-ive').style.width = Math.round((completed/PDF_FILES.length)*100)+'%';
+    document.getElementById('load-st-ive').textContent = `${completed}/${PDF_FILES.length} documentos`;
+    if (currentTab==='all') syncAllProgress();
+  });
+  await Promise.allSettled(tasks);
+  document.getElementById('prog-ive').style.width = '100%';
+  document.getElementById('load-st-ive').textContent = loaded+' de '+PDF_FILES.length+' cargados';
+  document.getElementById('load-det-ive').textContent = '';
+  if (currentTab==='ive'||currentTab==='all') document.getElementById('search-btn').disabled = false;
+  document.getElementById('empty-msg').textContent = 'Escribe un término y presiona Buscar';
+}
+
+// ══════════════════════════════════════════════════════════
+//  CARGA BUELA
+// ══════════════════════════════════════════════════════════
+
+async function loadAllDocsB() {
+  buildBuelaList();
+  let db = null;
+  try { db = await openDB(); } catch(e) {}
+  let loaded=0, completed=0;
+  const tasks = BUELA_ALL_DEFS.map(async (def,i) => {
+    const key = CACHE_VER+':buela:'+def.name;
+    document.getElementById('load-det-buela').textContent = 'Cargando: '+def.label;
+    let text = null;
+    if (db) { try { text = await cacheGet(db, key); } catch(e) {} }
+    if (!text) {
+      try { text = await fetchTXT(def.url); if(db&&text) cachePut(db,key,text).catch(()=>{}); }
+      catch(e) { text = null; }
+    }
+    docsB[i] = { name: def.label, text: text||'', selected: !!text, collection:'buela', group: def.group };
+    const item = document.getElementById('item-buela-'+i);
+    if (item) item.classList.replace('loading-doc', text ? 'loaded-doc' : 'error-doc');
+    if (!text) {
+      const cb = document.getElementById('doc-buela-'+i);
+      if(cb){cb.checked=false; cb.disabled=true;}
+      docsB[i].error = true;
+    } else { loaded++; }
+    completed++;
+    document.getElementById('prog-buela').style.width = Math.round((completed/BUELA_ALL_DEFS.length)*100)+'%';
+    document.getElementById('load-st-buela').textContent = `${completed}/${BUELA_ALL_DEFS.length} documentos`;
+    if (currentTab==='all') syncAllProgress();
+  });
+  await Promise.allSettled(tasks);
+  document.getElementById('prog-buela').style.width = '100%';
+  document.getElementById('load-st-buela').textContent = loaded+' de '+BUELA_ALL_DEFS.length+' cargados';
+  document.getElementById('load-det-buela').textContent = '';
+  if (currentTab==='buela'||currentTab==='all') document.getElementById('search-btn').disabled = false;
+}
+
+// ══════════════════════════════════════════════════════════
+//  FETCH
+// ══════════════════════════════════════════════════════════
+
+async function fetchTXT(url) {
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error('No se pudo cargar');
+  const raw = await resp.text();
+
+  if (raw.includes('§')) {
+    const parrafos = [];
+    // Dividir por marcadores §, no por bloques de texto vacío
+    // Primero detectar si es formato IVE (§N.) o Buela (§TÍTULO§)
+    const esIVE = /^§\d+\./m.test(raw);
+
+    if (esIVE) {
+      // Formato IVE: §N. texto — dividir por cada marcador de párrafo
+      // Los títulos de sección aparecen como líneas en MAYÚSCULAS o con formato especial
+      // antes del §N., los capturamos como contexto del párrafo
+      const reParrafo = /§(\d+)\.\s*/g;
+      let m, prev = 0;
+      const matches = [];
+      while ((m = reParrafo.exec(raw)) !== null) {
+        matches.push({ num: parseInt(m[1]), start: m.index + m[0].length });
+      }
+      for (let i = 0; i < matches.length; i++) {
+        const cur = matches[i];
+        const end = i + 1 < matches.length ? matches[i+1].start - matches[i+1].start + matches[i+1].start - cur.start + cur.start : raw.length;
+        // Texto del párrafo: desde después del marcador hasta el siguiente §N.
+        const nextStart = i + 1 < matches.length ? matches[i+1].start - (raw.slice(cur.start).search(/§\d+\./)) : raw.length;
+        // Buscar título de capítulo en el bloque ANTES de este §N.
+        // Es el texto en mayúsculas / línea corta que precede al §
+        const blockBefore = raw.slice(prev, cur.start - (raw.slice(prev, cur.start).length - raw.slice(prev, cur.start).lastIndexOf('\n§')));
+        prev = i + 1 < matches.length ? matches[i+1].start : raw.length;
+
+        // Texto del párrafo hasta el próximo §N.
+        const textoEnd = i + 1 < matches.length
+          ? raw.indexOf('§' + matches[i+1].num + '.', cur.start)
+          : raw.length;
+        const texto = raw.slice(cur.start, textoEnd).trim();
+
+        // Buscar si hay un §TÍTULO§ antes de este párrafo (para documentos mixtos)
+        const segmento = raw.slice(0, cur.start);
+        const ultimoTitulo = segmento.lastIndexOf('§TÍTULO§');
+        let titulo = '';
+        if (ultimoTitulo !== -1) {
+          const despuesTitulo = raw.slice(ultimoTitulo + 8).split(/\n/)[0].trim();
+          // Solo usarlo si está suficientemente cerca (menos de 2000 chars antes)
+          if (cur.start - ultimoTitulo < 2000) titulo = despuesTitulo;
+        }
+
+        parrafos.push({ page: cur.num, text: texto, titulo });
+      }
+    } else {
+      // Formato Buela: §TÍTULO§ título\n\ntexto\n\ntexto...
+      // Cada §TÍTULO§ abre una nueva sección; el título se resetea solo entre secciones
+      const bloques = raw.split(/(?=§TÍTULO§)/);
+      for (const bloque of bloques) {
+        const bloqueTrim = bloque.trim();
+        if (!bloqueTrim) continue;
+
+        const mTit = bloqueTrim.match(/^§TÍTULO§\s*(.+?)(?:\n|$)([\s\S]*)/);
+        if (mTit) {
+          const titulo = mTit[1].trim();
+          // Cortar notas al pie: todo lo que viene después de __________________ (≥10 guiones bajos)
+          const resto = mTit[2].split(/_{10,}/)[0];
+          // Sub-bloques de texto dentro de esta sección
+          const subBloques = resto.split(/\n\n+/);
+          for (const sb of subBloques) {
+            const t = sb.trim();
+            if (t) parrafos.push({ page: 0, text: t, titulo });
+          }
+        } else {
+          // Texto antes del primer §TÍTULO§ — también filtrar notas al pie
+          const sinNotas = bloqueTrim.split(/_{10,}/)[0];
+          const subBloques = sinNotas.split(/\n\n+/);
+          for (const sb of subBloques) {
+            const t = sb.trim();
+            if (t) parrafos.push({ page: 0, text: t, titulo: '' });
+          }
+        }
+      }
+    }
+
+    if (parrafos.length) return JSON.stringify(parrafos);
+  }
+
+  return JSON.stringify([{ page: 1, text: raw, titulo: '' }]);
+}
+async function fetchPDF(url) {
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error('No se pudo cargar');
+  const ab  = await resp.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+  const pages = [];
+  for (let p=1; p<=pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const tc   = await page.getTextContent();
+    pages.push({ page: p, text: tc.items.map(i=>i.str).join(' ') });
+  }
+  return JSON.stringify(pages);
+}
+
+function parsedPages(doc) {
+  if (!doc.text) return [];
+  try { const a = JSON.parse(doc.text); if (Array.isArray(a)) return a; } catch(e) {}
+  return [{ page:1, text: doc.text }];
+}
+function fullText(doc) { return parsedPages(doc).map(p=>p.text).join(' '); }
+
+// ══════════════════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════════════════
+
+function normalize(s) { return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+const STOPWORDS = new Set(['de','la','el','en','y','a','que','los','las','del','se','un','una','por','con','no','al','le','su','es','lo','como','más','pero','sus','me','si','sin','sobre','también','entre','cuando','muy','fue','ha','ser','era','así','hasta','desde','tiene','son','nos','ya','hay','porque','todo','esta','este','para','bien','ese','eso','ante','bajo','cabe','con','contra','donde','durante','hacia','mediante','salvo','según','tras','versus','via','pro','cui','qui','quae','quod','est','et','in','ad','ut','non','sed','quia','vel','per','cum','ex','ab','te','tu','yo','él','mi','ti','nos','eso','ello','sus','les','han','has','hizo','fue','ser','siendo','sido','estar','siendo','cada','todo','todos','todas','tanto','tan','dos','tres','uno','tal','vez','hacer','haber','más','otro','otra','otros','otras','mismo','misma','así','aún','aunque','donde','cuando','como','sino','pues','pues','mas','ahi','aquí','ahí']);
+
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function escRx(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+
+// ══════════════════════════════════════════════════════════
+//  BÚSQUEDA
+// ══════════════════════════════════════════════════════════
+
+function doSearch() {
+  const raw = document.getElementById('search-input').value.trim();
+  if (!raw) return;
+
+  const maxDist = parseInt(document.getElementById('distance-input').value) || 10;
+  const activeDocs = getActiveDocs().filter(d => d && d.selected && d.text);
+  if (!activeDocs.length) {
+    document.getElementById('results-area').innerHTML = '<div class="no-results">No hay documentos seleccionados.</div>';
+    return;
+  }
+  const btn = document.getElementById('search-btn');
+  btn.disabled=true; btn.classList.add('searching'); btn.textContent='Buscando…';
+
+  setTimeout(() => {
+    lastRaw = raw;
+    // Guardar en búsquedas recientes
+    try {
+      let recents = JSON.parse(localStorage.getItem('ive-recents') || '[]');
+      recents = [raw, ...recents.filter(r => r !== raw)].slice(0, 8);
+      localStorage.setItem('ive-recents', JSON.stringify(recents));
+      updateRecentsList(recents);
+    } catch(e) {}
+    if (currentTab === 'all') {
+      runSearchAll(raw, maxDist);
+    } else {
+      const results = runSearch(raw, maxDist, activeDocs);
+      lastResults = { mode: currentTab, results };
+      renderResults(results, activeDocs.length, raw, currentTab);
+    }
+    btn.disabled=false; btn.classList.remove('searching'); btn.textContent='Buscar';
+  }, 20);
+}
+
+function runSearchAll(raw, maxDist) {
+  const iveDocs   = docs.filter(d=>d&&d.selected&&d.text);
+  const buelaDocs = docsB.filter(d=>d&&d.selected&&d.text);
+  const iveRes    = runSearch(raw, maxDist, iveDocs);
+  const buelaRes  = runSearch(raw, maxDist, buelaDocs);
+  lastResults = { mode:'all', iveRes, buelaRes };
+  renderResultsAll(iveRes, buelaRes, raw);
+}
+
+function parseQuery(raw) {
+  if (raw.startsWith('"') && raw.endsWith('"')) return { mode:'exact', phrase: raw.slice(1,-1).trim() };
+  if (/\bOR\b/.test(raw)) { const parts = raw.split(/\bOR\b/).map(s=>s.trim()).filter(Boolean); return { mode:'or', groups: parts }; }
+  return { mode:'and', terms: raw.split(/\s+/).filter(Boolean) };
+}
+
+function runSearch(raw, maxDist, selected) {
+  const query = parseQuery(raw);
+  // Rango §N (solo aplica a docs IVE con párrafos numerados)
+  const rangeFrom = parseInt(document.getElementById('range-from')?.value) || 0;
+  const rangeTo   = parseInt(document.getElementById('range-to')?.value)   || Infinity;
+  let totalHits=0, docsWithHits=0;
+  const docResults = [];
+  for (const doc of selected) {
+    const text  = fullText(doc);
+    let pages = parsedPages(doc);
+    // Aplicar filtro de rango solo si el doc tiene párrafos numerados
+    const hasNums = pages.some(p => p.page > 0);
+    if (hasNums && (rangeFrom > 0 || rangeTo < Infinity)) {
+      pages = pages.filter(p => p.page === 0 || (p.page >= rangeFrom && p.page <= rangeTo));
+    }
+    let allSnips = [];
+    if      (query.mode==='exact') allSnips = searchExact(text, pages, query.phrase);
+    else if (query.mode==='or')    allSnips = searchOR(text, pages, query.groups, maxDist);
+    else                            allSnips = searchTerms(text, pages, query.terms, maxDist);
+    snippetsMap[doc.name] = allSnips;
+    if (allSnips.length > 0) { docsWithHits++; totalHits += allSnips.length; }
+    docResults.push({ name: doc.name, count: allSnips.length, totalCount: allSnips.length, collection: doc.collection });
+  }
+  docResults.sort((a,b) => b.count - a.count);
+  return { docResults, totalHits, docsWithHits, query };
+}
+
+// ══════════════════════════════════════════════════════════
+//  RENDER RESULTADOS
+// ══════════════════════════════════════════════════════════
+
+function renderResults({ docResults, totalHits, docsWithHits }, searchedCount, raw, col) {
+  const area = document.getElementById('results-area');
+  const activeDocs = col==='ive' ? docs : docsB;
+
+  // badges
+  activeDocs.forEach((d,i) => {
+    if (!d) return;
+    const r = docResults.find(r=>r.name===d.name);
+    ['', 'all-ive-', 'all-buela-'].forEach(pfx => {
+      const badge = document.getElementById('badge-'+pfx+i) || document.getElementById('badge-'+(col==='ive'?'ive':'buela')+'-'+i);
+      // handled below
+    });
+    const suffix = col==='ive' ? 'ive' : 'buela';
+    const b1 = document.getElementById('badge-'+suffix+'-'+i);
+    if (b1) { b1.textContent = r&&r.count>0?r.count:''; b1.style.display = r&&r.count>0?'inline-block':'none'; }
+    const pfx2 = col==='ive' ? 'badge-all-ive-' : 'badge-all-buela-';
+    const b2 = document.getElementById(pfx2+i);
+    if (b2) { b2.textContent = r&&r.count>0?r.count:''; b2.style.display = r&&r.count>0?'inline-block':'none'; }
+  });
+
+  let html = `<div class="results-summary">
+    <div class="stat-box"><div class="stat-num">${totalHits}</div><div class="stat-lbl">Ocurrencias</div></div>
+    <div class="stat-box"><div class="stat-num">${docsWithHits}</div><div class="stat-lbl">Documentos</div></div>
+    <div class="stat-box"><div class="stat-num">${searchedCount}</div><div class="stat-lbl">Buscados</div></div>
+    ${totalHits>0?`<button class="export-btn" onclick="exportResults()">⬇ TXT</button><button class="export-pdf-btn" onclick="exportPDF()">⬇ PDF</button>`:''}
+  </div>`;
+
+  if (!totalHits) {
+    html += `<div class="no-results">Sin resultados para <em>"${escHtml(raw)}"</em></div>`;
+  } else {
+    for (const r of docResults) {
+      if (!r.count) continue;
+      html += buildDocCard(r, col, activeDocs);
+    }
+  }
+  area.innerHTML = html;
+}
+
+function renderResultsAll(iveRes, buelaRes, raw) {
+  const area = document.getElementById('results-area');
+  const totalHits = iveRes.totalHits + buelaRes.totalHits;
+  const totalDocs = iveRes.docsWithHits + buelaRes.docsWithHits;
+
+  // badges
+  docs.forEach((d,i)=>{ if(!d) return; const r=iveRes.docResults.find(r=>r.name===d.name); const b=document.getElementById('badge-ive-'+i); if(b){b.textContent=r&&r.count>0?r.count:''; b.style.display=r&&r.count>0?'inline-block':'none';} const b2=document.getElementById('badge-all-ive-'+i); if(b2){b2.textContent=r&&r.count>0?r.count:''; b2.style.display=r&&r.count>0?'inline-block':'none';}});
+  docsB.forEach((d,i)=>{ if(!d) return; const r=buelaRes.docResults.find(r=>r.name===d.name); const b=document.getElementById('badge-buela-'+i); if(b){b.textContent=r&&r.count>0?r.count:''; b.style.display=r&&r.count>0?'inline-block':'none';} const b2=document.getElementById('badge-all-buela-'+i); if(b2){b2.textContent=r&&r.count>0?r.count:''; b2.style.display=r&&r.count>0?'inline-block':'none';}});
+
+  let html = `<div class="results-summary">
+    <div class="stat-box"><div class="stat-num">${totalHits}</div><div class="stat-lbl">Ocurrencias</div></div>
+    <div class="stat-box"><div class="stat-num">${totalDocs}</div><div class="stat-lbl">Documentos</div></div>
+    ${totalHits>0?`<button class="export-btn" onclick="exportResults()">⬇ Exportar</button>`:''}
+  </div>`;
+
+  if (!totalHits) {
+    html += `<div class="no-results">Sin resultados para <em>"${escHtml(raw)}"</em></div>`;
+  } else {
+    if (iveRes.totalHits > 0) {
+      html += `<div class="section-header">
+        <span class="section-header-dot ive"></span>
+        <span class="section-header-title">Documentos IVE</span>
+        <span class="section-header-count">${iveRes.totalHits} ocurrencias · ${iveRes.docsWithHits} documentos</span>
+      </div>`;
+      for (const r of iveRes.docResults) {
+        if (!r.count) continue;
+        html += buildDocCard(r, 'ive', docs);
+      }
+    }
+    if (buelaRes.totalHits > 0) {
+      html += `<div class="section-header">
+        <span class="section-header-dot buela"></span>
+        <span class="section-header-title">Escritos P. Buela</span>
+        <span class="section-header-count">${buelaRes.totalHits} ocurrencias · ${buelaRes.docsWithHits} documentos</span>
+      </div>`;
+      for (const r of buelaRes.docResults) {
+        if (!r.count) continue;
+        html += buildDocCard(r, 'buela', docsB);
+      }
+    }
+  }
+  area.innerHTML = html;
+}
+
+function buildDocCard(r, col, activeDocs) {
+  const id = 'rd'+(++resultCtr);
+  const allSnips = snippetsMap[r.name] || [];
+  const shown = allSnips.slice(0, SNIP_PAGE);
+  const remaining = allSnips.length - shown.length;
+  const docIdx = activeDocs.findIndex(d=>d&&d.name===r.name);
+  const colClass = col==='ive' ? 'ive-doc' : 'buela-doc';
+  const colLabel = col==='ive' ? 'IVE' : 'P. Buela';
+
+  // Wrapping snippets with onclick to open modal at that fragment
+  const shownWithClick = shown.map((s, si) =>
+    s.replace('<div class="snippet">', `<div class="snippet" onclick="openFullTextAtFragment(${docIdx},'${col}',${si})" title="Clic para ver el párrafo completo">`)
+  );
+  let html = `<div class="result-doc ${colClass}" id="${id}">
+    <div class="result-doc-header" onclick="toggleDoc('${id}')">
+      <span class="result-doc-name">${escHtml(r.name)}</span>
+      <div class="result-doc-actions" onclick="event.stopPropagation()">
+        <span class="result-doc-collection">${colLabel}</span>
+        <span class="result-doc-badge">${r.count} resultado${r.count!==1?'s':''}</span>
+        ${docIdx>=0?`<button class="view-full-btn" onclick="openFullText(${docIdx},'${col}')">Ver texto completo</button>`:''}
+      </div>
+      <span class="result-doc-toggle">▾</span>
+    </div>
+    <div class="result-snippets">
+      ${shownWithClick.join('')}
+      ${remaining>0
+        ? `<div class="snippet-show-more" id="more-${id}" onclick="showMoreSnippets('${id}','${r.name}',${SNIP_PAGE},${docIdx},'${col}')">
+             Mostrar más resultados (${remaining} restantes)
+           </div>`
+        : ''}
+    </div>
+  </div>`;
+  return html;
+}
+
+function toggleDoc(id) { document.getElementById(id).classList.toggle('collapsed'); }
+
+function showMoreSnippets(cardId, docName, currentShown, docIdx, col) {
+  const allSnips = snippetsMap[docName] || [];
+  const newShown = currentShown + SNIP_PAGE;
+  const card     = document.getElementById(cardId);
+  const snippetsDiv = card.querySelector('.result-snippets');
+  const moreBtn = document.getElementById('more-'+cardId);
+
+  // Añadir los nuevos snippets con onclick correcto usando índice global
+  const newBatch = allSnips.slice(currentShown, newShown);
+  for (let i = 0; i < newBatch.length; i++) {
+    const globalIdx = currentShown + i;
+    const tmp = document.createElement('div');
+    tmp.innerHTML = newBatch[i].replace(
+      '<div class="snippet">',
+      `<div class="snippet" onclick="openFullTextAtFragment(${docIdx},'${col}',${globalIdx})" title="Clic para ver el párrafo completo">`
+    );
+    snippetsDiv.insertBefore(tmp.firstChild, moreBtn);
+  }
+
+  const remaining = allSnips.length - newShown;
+  if (remaining <= 0) {
+    moreBtn.remove();
+  } else {
+    moreBtn.textContent = `Mostrar más resultados (${remaining} restantes)`;
+    moreBtn.onclick = () => showMoreSnippets(cardId, docName, newShown, docIdx, col);
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  ALGORITMOS DE BÚSQUEDA
+// ══════════════════════════════════════════════════════════
+
+function getPageForPos(pages, pos) {
+  let cum = 0;
+  for (const p of pages) {
+    if (pos < cum + p.text.length + 1) return { page: p.page, titulo: p.titulo || '' };
+    cum += p.text.length + 1;
+  }
+  const last = pages.length > 0 ? pages[pages.length-1] : null;
+  return { page: last ? last.page : 1, titulo: last ? (last.titulo || '') : '' };
+}
+
+function searchExact(text, pages, phrase) {
+  const normText   = normalize(text);
+  const normPhrase = normalize(phrase);
+  const snippets   = [];
+  let pos = 0;
+  while ((pos = normText.indexOf(normPhrase, pos)) !== -1) {
+    const loc = getPageForPos(pages, pos);
+    const start = Math.max(0, pos-130);
+    const end   = Math.min(text.length, pos+normPhrase.length+130);
+    let snip = text.slice(start, end).replace(/\s+/g,' ').trim();
+    if (start>0) snip='…'+snip;
+    if (end<text.length) snip+='…';
+    let meta = '';
+    if (loc.titulo) meta += `<div class="snippet-meta" style="color:var(--burgundy);font-style:italic;">${escHtml(loc.titulo)}</div>`;
+    else if (pages.length>1 && loc.page>0) meta += `<div class="snippet-meta">pág. ${loc.page}</div>`;
+    snippets.push(`<div class="snippet">${meta}${highlightFuzzy(escHtml(snip), normalize(phrase), false)}</div>`);
+    pos++;
+  }
+  return snippets;
+}
+
+function searchOR(text, pages, groups, maxDist) {
+  const all = [];
+  for (const g of groups) {
+    all.push(...searchTerms(text, pages, g.split(/\s+/).filter(Boolean), maxDist));
+  }
+  return all;
+}
+
+function searchTerms(text, pages, terms, maxDist) {
+  const normText = normalize(text);
+  const positions = [];
+  for (const term of terms) {
+    const nt = normalize(term);
+    const isWild = nt.endsWith('*');
+    const base   = isWild ? nt.slice(0,-1) : nt;
+    const re     = new RegExp((isWild?'':'\\b')+escRx(base)+(isWild?'[a-záéíóúüñ]*':'\\b'),'gi');
+    const ps=[]; let m;
+    while((m=re.exec(normText))!==null) ps.push(m.index);
+    positions.push(ps);
+  }
+  if (positions.some(p=>p.length===0)) return [];
+
+  const snippets = [];
+  const used     = new Set();
+
+  if (terms.length===1) {
+    for (const pos of positions[0]) {
+      const key = Math.floor(pos/60);
+      if (used.has(key)) continue;
+      used.add(key);
+      const loc = getPageForPos(pages, pos);
+      const start = Math.max(0, pos-130);
+      const end   = Math.min(text.length, pos+130);
+      let snip = text.slice(start,end).replace(/\s+/g,' ').trim();
+      if (start>0) snip='…'+snip;
+      if (end<text.length) snip+='…';
+      let html = escHtml(snip);
+      html = highlightFuzzy(html, normalize(terms[0]), normalize(terms[0]).endsWith('*'));
+      let meta = '';
+      if (loc.titulo && loc.page > 0) meta = `<div class="snippet-meta"><span style="color:var(--gold);font-weight:600;margin-right:8px;">§ ${loc.page}</span><span style="color:var(--burgundy);font-style:italic;">${escHtml(loc.titulo)}</span></div>`;
+      else if (loc.titulo) meta = `<div class="snippet-meta" style="color:var(--burgundy);font-style:italic;">${escHtml(loc.titulo)}</div>`;
+      else if (pages.length>1 && loc.page>0) meta = `<div class="snippet-meta" style="color:var(--gold);font-weight:600;">§ ${loc.page}</div>`;
+      snippets.push(`<div class="snippet">${meta}${html}</div>`);
+    }
+    return snippets;
+  }
+
+  const all = positions.flatMap((ps,ti)=>ps.map(p=>({p,ti}))).sort((a,b)=>a.p-b.p);
+  for (let i=0; i<all.length; i++) {
+    const seen=new Set([all[i].ti]); let maxP=all[i].p;
+    for (let j=i+1; j<all.length&&seen.size<terms.length; j++) {
+      if (normText.slice(all[i].p,all[j].p).split(/\s+/).length>maxDist) break;
+      if (!seen.has(all[j].ti)){seen.add(all[j].ti); maxP=all[j].p;}
+    }
+    if (seen.size===terms.length) {
+      const key=Math.floor(all[i].p/120);
+      if (!used.has(key)) {
+        used.add(key);
+        const loc=getPageForPos(pages,all[i].p);
+        const start=Math.max(0,all[i].p-80);
+        const end=Math.min(text.length,maxP+100);
+        let snip=text.slice(start,end).replace(/\s+/g,' ').trim();
+        if(start>0) snip='…'+snip;
+        if(end<text.length) snip+='…';
+        let html=escHtml(snip);
+        for(const term of terms){const nt=normalize(term);html=highlightFuzzy(html,nt,nt.endsWith('*'));}
+        let meta='';
+        if(loc.titulo && loc.page>0) meta=`<div class="snippet-meta"><span style="color:var(--gold);font-weight:600;margin-right:8px;">§ ${loc.page}</span><span style="color:var(--burgundy);font-style:italic;">${escHtml(loc.titulo)}</span></div>`;
+        else if(loc.titulo) meta=`<div class="snippet-meta" style="color:var(--burgundy);font-style:italic;">${escHtml(loc.titulo)}</div>`;
+        else if(pages.length>1 && loc.page>0) meta=`<div class="snippet-meta" style="color:var(--gold);font-weight:600;">§ ${loc.page}</div>`;
+        snippets.push(`<div class="snippet">${meta}${html}</div>`);
+      }
+    }
+  }
+  return snippets;
+}
+
+function highlightFuzzy(html, normTerm, isWild) {
+  const base = isWild ? normTerm.slice(0,-1) : normTerm;
+  const re   = new RegExp('('+escRx(base)+(isWild?'[a-záéíóúüñA-ZÁÉÍÓÚÜÑ]*':'`')+')','gi');
+  // fix: use non-backtick version
+  const re2  = new RegExp('('+escRx(base)+(isWild?'[a-záéíóúüñA-ZÁÉÍÓÚÜÑ]*':'')+')','gi');
+  return html.replace(re2, m => normalize(m).startsWith(base) ? '<mark>'+m+'</mark>' : m);
+}
+
+
+// ══════════════════════════════════════════════════════════
+//  TÉRMINOS FRECUENTES
+// ══════════════════════════════════════════════════════════
+function buildFreqCloud(col) {
+  const source = col === 'buela' ? docsB : (col === 'all' ? [...docs, ...docsB] : docs);
+  const loaded = source.filter(d => d && d.text);
+  if (!loaded.length) return;
+  const freq = {};
+  for (const doc of loaded) {
+    const pages = parsedPages(doc);
+    const words = pages.map(p => p.text).join(' ')
+      .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .split(/[^a-záéíóúüñ]+/)
+      .filter(w => w.length >= 5 && !STOPWORDS.has(w));
+    for (const w of words) freq[w] = (freq[w] || 0) + 1;
+  }
+  const top = Object.entries(freq)
+    .filter(([w, n]) => n >= 3)
+    .sort((a,b) => b[1]-a[1])
+    .slice(0, 80);
+  const cloud = document.getElementById('freq-cloud');
+  if (!top.length) { cloud.innerHTML = '<em style="font-size:11px;color:var(--ink-light)">Sin datos</em>'; return; }
+  const maxN = top[0][1], minN = top[top.length-1][1];
+  cloud.innerHTML = top.map(([w,n]) => {
+    const size = 10 + Math.round((n - minN) / Math.max(maxN - minN, 1) * 6);
+    return `<span class="freq-tag" style="font-size:${size}px" onclick="setSearchTerm('${w}')" title="${n} ocurrencias">${w}<span class="freq-n">${n}</span></span>`;
+  }).join('');
+}
+
+function setSearchTerm(w) {
+  document.getElementById('search-input').value = w;
+  document.getElementById('search-input').focus();
+}
+// ══════════════════════════════════════════════════════════
+//  EXPORTAR
+// ══════════════════════════════════════════════════════════
+
+function exportResults() {
+  if (!lastResults) return;
+  let out = `Buscador IVE — Resultados para: "${lastRaw}"\n${'='.repeat(60)}\n\n`;
+
+  const writeSection = (label, results) => {
+    if (!results || !results.totalHits) return;
+    out += `\n▶ ${label} — ${results.totalHits} ocurrencias en ${results.docsWithHits} documentos\n${'─'.repeat(50)}\n`;
+    for (const r of results.docResults) {
+      if (!r.count) continue;
+      out += `\n  ◆ ${r.name}: ${r.count} resultado${r.count!==1?'s':''}\n`;
+      const snips = snippetsMap[r.name] || [];
+      for (const s of snips) {
+        out += '    '+s.replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim()+'\n\n';
+      }
+    }
+  };
+
+  if (lastResults.mode === 'all') {
+    writeSection('Documentos IVE', lastResults.iveRes);
+    writeSection('Escritos P. Buela', lastResults.buelaRes);
+  } else {
+    const label = lastResults.mode==='ive' ? 'Documentos IVE' : 'Escritos P. Buela';
+    writeSection(label, lastResults.results);
+  }
+
+  const blob = new Blob([out], { type:'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `IVE-${lastRaw.replace(/[^a-z0-9]/gi,'_').slice(0,30)}.txt`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ── Exportar a PDF ──────────────────────────────────────
+function exportPDF() {
+  if (!lastResults) return;
+
+  // Recopilar filas de resultados
+  const rows = [];
+  const addSection = (label, results) => {
+    if (!results || !results.totalHits) return;
+    rows.push({ type: 'section', text: label + ' — ' + results.totalHits + ' ocurrencias en ' + results.docsWithHits + ' documentos' });
+    for (const r of results.docResults) {
+      if (!r.count) continue;
+      rows.push({ type: 'doc', text: r.name + ' (' + r.count + ')' });
+      const snips = snippetsMap[r.name] || [];
+      for (const s of snips) {
+        rows.push({ type: 'snip', text: s.replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim() });
+      }
+    }
+  };
+
+  if (lastResults.mode === 'all') {
+    addSection('Documentos IVE', lastResults.iveRes);
+    addSection('Escritos P. Buela', lastResults.buelaRes);
+  } else {
+    const label = lastResults.mode==='ive' ? 'Documentos IVE' : 'Escritos P. Buela';
+    addSection(label, lastResults.results);
+  }
+
+  // Construir HTML para imprimir
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>IVE – ${escHtml(lastRaw)}</title>
+<style>
+  body { font-family: Georgia, serif; font-size: 12px; color: #1a1a2a; padding: 32px 48px; max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 18px; color: #2d0a14; border-bottom: 2px solid #8b1a2c; padding-bottom: 8px; }
+  h2 { font-size: 13px; color: #1a2744; margin-top: 24px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+  h3 { font-size: 12px; color: #8b1a2c; margin: 14px 0 4px; font-style: italic; }
+  p.snip { margin: 0 0 8px; padding: 6px 10px; background: #faf9f4; border-left: 3px solid #c9a227; font-size: 11.5px; line-height: 1.6; }
+  .date { font-size: 10px; color: #888; margin-top: 4px; }
+  @media print { body { padding: 20px; } }
+</style></head><body>
+<h1>Buscador IVE — "${escHtml(lastRaw)}"</h1>
+<div class="date">Exportado el ${new Date().toLocaleDateString('es-AR', {day:'2-digit',month:'long',year:'numeric'})}</div>
+${rows.map(r => {
+  if (r.type==='section') return `<h2>${escHtml(r.text)}</h2>`;
+  if (r.type==='doc')     return `<h3>◆ ${escHtml(r.text)}</h3>`;
+  return `<p class="snip">${escHtml(r.text)}</p>`;
+}).join('\n')}
+</body></html>`;
+
+  const win = window.open('', '_blank');
+  if (!win) { alert('Permitir ventanas emergentes para exportar PDF'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { win.print(); }, 400);
+}
+
+// ══════════════════════════════════════════════════════════
+//  MODAL — nueva lógica
+//  · IVE (§N.): muestra el párrafo COMPLETO
+//  · Buela / plano: muestra ~500 palabras alrededor de la ocurrencia
+//  · Todas las ocurrencias en amarillo; la "actual" en rojo
+//  · Anterior/Siguiente navega entre fragmentos/párrafos
+// ══════════════════════════════════════════════════════════
+
+let modalDoc=null, modalFragments=[], modalIdx=0;
+
+// Extrae los términos de búsqueda desde la query
+function queryTerms(query) {
+  const q = parseQuery(query);
+  if (q.mode==='exact') return [q.phrase];
+  if (q.mode==='or')    return q.groups.flatMap(g=>g.split(/\s+/).filter(Boolean));
+  return q.terms;
+}
+
+// Resalta todas las ocurrencias de los términos en un HTML:
+// - La ocurrencia en posición `currentPos` (en el texto plano del fragmento) → rojo
+// - El resto → amarillo
+// Si currentPos es null → todas en amarillo
+function highlightWithCurrent(plainText, terms, currentPos) {
+  // Recopilar todas las posiciones de coincidencia en el texto plano normalizado
+  const norm = normalize(plainText);
+  const hits = []; // { start, end } en coordenadas del texto original
+  for (const term of terms) {
+    const nt = normalize(term);
+    const isWild = nt.endsWith('*');
+    const base   = isWild ? nt.slice(0,-1) : nt;
+    const re = new RegExp((isWild?'':'\\b')+escRx(base)+(isWild?'[a-záéíóúüñ]*':'\\b'),'gi');
+    let m;
+    while ((m = re.exec(norm)) !== null) {
+      hits.push({ start: m.index, end: m.index + m[0].length });
+    }
+  }
+  hits.sort((a,b) => a.start - b.start);
+
+  // Determinar cuál hit es el "actual" (el más cercano a currentPos)
+  let currentHitIdx = -1;
+  if (currentPos !== null && hits.length) {
+    let best = Infinity;
+    hits.forEach((h,i) => {
+      const dist = Math.abs(h.start - currentPos);
+      if (dist < best) { best = dist; currentHitIdx = i; }
+    });
+  }
+
+  // Construir HTML intercalando marks
+  let out = '';
+  let pos = 0;
+  for (let i = 0; i < hits.length; i++) {
+    const h = hits[i];
+    if (h.start < pos) continue; // solapamiento, ignorar
+    out += escHtml(plainText.slice(pos, h.start));
+    const word = plainText.slice(h.start, h.end);
+    if (i === currentHitIdx) {
+      out += '<mark class="current">' + escHtml(word) + '</mark>';
+    } else {
+      out += '<mark>' + escHtml(word) + '</mark>';
+    }
+    pos = h.end;
+  }
+  out += escHtml(plainText.slice(pos));
+  return out;
+}
+
+// Construye los fragmentos del modal según el tipo de documento:
+// - IVE (páginas con page > 0): cada párrafo §N. que tenga coincidencia
+// - Buela / plano: ventana de ~500 palabras por cada ocurrencia
+function buildModalFragments(query, pages) {
+  const terms = queryTerms(query);
+  const fragments = [];
+
+  const esIVE = pages.length > 0 && pages.some(p => p.page > 0);
+
+  if (esIVE) {
+    // Un fragmento = un párrafo §N. completo con al menos una coincidencia
+    for (const p of pages) {
+      const normP = normalize(p.text);
+      let hitPos = null;
+      for (const term of terms) {
+        const nt = normalize(term);
+        const isWild = nt.endsWith('*');
+        const base   = isWild ? nt.slice(0,-1) : nt;
+        const re = new RegExp((isWild?'':'\\b')+escRx(base)+(isWild?'[a-záéíóúüñ]*':'\\b'),'i');
+        const m = re.exec(normP);
+        if (m) { hitPos = m.index; break; }
+      }
+      if (hitPos !== null) {
+        fragments.push({
+          num:    p.page,
+          titulo: p.titulo || '',
+          plain:  p.text,
+          hitPos  // posición de la primera ocurrencia dentro del texto del párrafo
+        });
+      }
+    }
+    fragments.sort((a,b) => a.num - b.num);
+    return fragments;
+  }
+
+  // Buela / texto plano: ventana de ~500 palabras alrededor de cada ocurrencia
+  // Unimos todos los párrafos en texto plano continuo
+  const fullPlain = pages.map(p=>p.text).join('\n\n');
+  const normFull  = normalize(fullPlain);
+
+  // Recopilar todas las posiciones de ocurrencia
+  const allHits = [];
+  for (const term of terms) {
+    const nt = normalize(term);
+    const isWild = nt.endsWith('*');
+    const base   = isWild ? nt.slice(0,-1) : nt;
+    const re = new RegExp((isWild?'':'\\b')+escRx(base)+(isWild?'[a-záéíóúüñ]*':'\\b'),'gi');
+    let m;
+    while ((m = re.exec(normFull)) !== null) allHits.push(m.index);
+  }
+  allHits.sort((a,b) => a-b);
+  if (!allHits.length) return [];
+
+  // Agrupar hits cercanos en una misma ventana (~500 palabras ≈ 3000 chars)
+  const WIN = 1500; // chars a cada lado
+  const used = new Set();
+  for (const hitPos of allHits) {
+    // Buscar la página Buela que contiene esta posición para el título
+    let cum = 0, tituloFrag = '';
+    for (const p of pages) {
+      if (hitPos < cum + p.text.length + 2) { tituloFrag = p.titulo || ''; break; }
+      cum += p.text.length + 2;
+    }
+
+    const start = Math.max(0, hitPos - WIN);
+    const end   = Math.min(fullPlain.length, hitPos + WIN);
+    const key   = Math.floor(hitPos / (WIN * 0.8));
+    if (used.has(key)) continue;
+    used.add(key);
+
+    // Ajustar bordes a espacios para no cortar palabras
+    let s = start, e = end;
+    while (s > 0 && fullPlain[s] !== ' ' && fullPlain[s] !== '\n') s--;
+    while (e < fullPlain.length && fullPlain[e] !== ' ' && fullPlain[e] !== '\n') e++;
+
+    const plain = (s > 0 ? '…' : '') + fullPlain.slice(s, e).trim() + (e < fullPlain.length ? '…' : '');
+    // hitPos dentro del fragmento recortado
+    const localHitPos = hitPos - s + (s > 0 ? 1 : 0);
+
+    fragments.push({ num: 0, titulo: tituloFrag, plain, hitPos: localHitPos });
+  }
+
+  return fragments;
+}
+
+// Renderiza un fragmento en el modal, resaltando todas las ocurrencias
+// La actual (hitPos) en rojo, el resto en amarillo
+function showFragment(idx) {
+  const body = document.getElementById('modal-body');
+  const frag = modalFragments[idx];
+  const terms = modalDoc ? queryTerms(document.getElementById('modal-search-input').value || lastRaw || '') : [];
+
+  // Cabecera: § N y/o título de sección
+  let label = '';
+  if (frag.titulo || frag.num > 0) {
+    const parInfo = frag.num > 0
+      ? `<span style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-right:10px;">§ ${frag.num}</span>`
+      : '';
+    const titInfo = frag.titulo
+      ? `<span style="font-size:14px;font-weight:600;color:var(--burgundy);">${escHtml(frag.titulo)}</span>`
+      : '';
+    label = `<div style="font-family:'Playfair Display',serif;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border-light);">${parInfo}${titInfo}</div>`;
+  }
+
+  // Resaltar texto con términos de búsqueda
+  let html = highlightWithCurrent(frag.plain, terms, frag.hitPos);
+  // FIX 1: resaltar números de cita flotante (ej: "comunión»42") en dorado suave
+  html = html.replace(/(\w[»"']?)(\d{1,3})(?=[\s,.<]|$)/g, '$1<span class="cite-num">$2</span>');
+
+  body.style.overflowY = 'auto';
+  body.style.padding   = '0';
+  body.style.whiteSpace = 'normal';
+  body.innerHTML = `<div style="padding:28px 32px;font-size:15px;line-height:2;color:var(--ink-mid);">${label}${html}</div>`;
+
+  // Scroll al mark.current dentro del modal
+  requestAnimationFrame(() => {
+    const cur = body.querySelector('mark.current');
+    if (cur) cur.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  });
+}
+
+function openFullTextAtFragment(docIdx, col, snippetIdx) {
+  const doc = col==='ive' ? docs[docIdx] : docsB[docIdx];
+  if (!doc || !doc.text) return;
+  modalDoc = doc;
+  document.getElementById('modal-title').textContent = doc.name;
+  document.getElementById('modal-search-input').value = lastRaw || '';
+  _renderModal(lastRaw || '', snippetIdx);
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function openFullText(docIdx, col) {
+  const doc = col==='ive' ? docs[docIdx] : docsB[docIdx];
+  if (!doc || !doc.text) return;
+  modalDoc = doc;
+  document.getElementById('modal-title').textContent = doc.name;
+  document.getElementById('modal-search-input').value = lastRaw || '';
+  _renderModal(lastRaw || '', 0);
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  setTimeout(()=>document.getElementById('modal-search-input').focus(), 100);
+}
+
+function _renderModal(query, startIdx) {
+  const body = document.getElementById('modal-body');
+  const hc   = document.getElementById('modal-hit-count');
+  modalFragments = []; modalIdx = 0;
+
+  if (!query || !modalDoc) {
+    body.style.overflowY = 'auto';
+    body.style.padding   = '24px 30px';
+    body.style.whiteSpace = 'pre-wrap';
+    body.textContent = fullText(modalDoc);
+    hc.textContent = '';
+    return;
+  }
+
+  const pages = parsedPages(modalDoc);
+  modalFragments = buildModalFragments(query, pages);
+
+  if (!modalFragments.length) {
+    body.style.overflowY = 'auto';
+    body.style.padding   = '24px 30px';
+    body.style.whiteSpace = 'normal';
+    body.innerHTML = '<em style="color:var(--ink-light)">Sin coincidencias</em>';
+    hc.textContent = 'Sin coincidencias';
+    return;
+  }
+
+  // Respetar el índice del snippet clicado (acotado al rango válido)
+  modalIdx = Math.min(startIdx, modalFragments.length - 1);
+  showFragment(modalIdx);
+  const frag0 = modalFragments[modalIdx];
+  const parLabel = frag0 && frag0.num > 0 ? ` · § ${frag0.num}` : '';
+  hc.textContent = `${modalIdx+1} / ${modalFragments.length}${parLabel}`;
+}
+
+function modalNav(dir) {
+  if (!modalFragments.length) return;
+  modalIdx = (modalIdx + dir + modalFragments.length) % modalFragments.length;
+  showFragment(modalIdx);
+  const fragN = modalFragments[modalIdx];
+  const parLabelN = fragN && fragN.num > 0 ? ` · § ${fragN.num}` : '';
+  document.getElementById('modal-hit-count').textContent = `${modalIdx+1} / ${modalFragments.length}${parLabelN}`;
+}
+
+function modalSearch() {
+  if (modalDoc) _renderModal(document.getElementById('modal-search-input').value.trim(), 0);
+}
+function modalSearchNav(e) { if(e.key==='Enter') modalNav(e.shiftKey?-1:1); }
+
+// Alias para compatibilidad con renderModalBody si quedó alguna referencia
+function renderModalBody(text, query) { _renderModal(query, 0); }
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.body.style.overflow='';
+  modalDoc=null; modalFragments=[];
+}
+function closeModalOnOverlay(e){ if(e.target===document.getElementById('modal-overlay')) closeModal(); }
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
+
+
+function clearResults() {
+  lastResults = null;
+  lastRaw = '';
+  document.querySelectorAll('.hit-badge').forEach(b => { b.style.display='none'; b.textContent=''; });
+  document.getElementById('results-area').innerHTML =
+    '<div class="empty-state"><div class="empty-icon">✦</div><p>Escribe un término y presiona Buscar</p></div>';
+}
+
+// ══════════════════════════════════════════════════════════
+//  INICIO
+// ══════════════════════════════════════════════════════════
+// Inicializar búsquedas recientes — buildFreqCloud se llama desde switchTab
+function updateRecentsList(recents) {
+  const dl = document.getElementById('search-recent');
+  if (!dl) return;
+  dl.innerHTML = recents.map(r => `<option value="${escHtml(r)}">`).join('');
+}
+try {
+  const saved = JSON.parse(localStorage.getItem('ive-recents') || '[]');
+  updateRecentsList(saved);
+} catch(e) {}
+
+loadAllDocs();
+loadAllDocsB();
+// Construir nube inicial (tab IVE por defecto) cuando todo cargue
+setTimeout(() => buildFreqCloud('ive'), 3000);
+</script>
+</body>
+</html>
